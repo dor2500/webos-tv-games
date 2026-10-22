@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=1920, height=1080, initial-scale=1.0, user-scalable=no">
-    <title>ארקייד נוסטלגיה וענן — 200+ משחקים לטלוויזיה LG webOS</title>
+    <title>ארקייד נוסטלגיה וענן — 1,200+ משחקים לטלוויזיה LG webOS</title>
     <style>
         * { box-sizing: border-box; user-select: none; -webkit-user-select: none; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body, html { width: 1920px; height: 1080px; overflow: hidden; background: #070913; color: #ffffff; }
@@ -16,45 +16,48 @@
         /* Header */
         header {
             width: 100%; height: 85px; display: flex; justify-content: space-between; align-items: center;
-            padding: 0 50px; background: linear-gradient(180deg, rgba(15, 23, 42, 0.95) 0%, transparent 100%);
+            padding: 0 45px; background: linear-gradient(180deg, rgba(15, 23, 42, 0.95) 0%, transparent 100%);
             z-index: 10;
         }
-        .brand { display: flex; align-items: center; gap: 18px; }
+        .brand { display: flex; align-items: center; gap: 16px; }
         .logo-badge {
             background: linear-gradient(135deg, #06b6d4, #a855f7); color: #fff;
-            padding: 6px 20px; border-radius: 12px; font-size: 22px; font-weight: 900; letter-spacing: 2px;
+            padding: 6px 18px; border-radius: 12px; font-size: 20px; font-weight: 900; letter-spacing: 2px;
             box-shadow: 0 0 25px rgba(6, 182, 212, 0.6);
         }
-        .brand-title { font-size: 26px; font-weight: 800; color: #f8fafc; }
+        .brand-title { font-size: 24px; font-weight: 800; color: #f8fafc; }
         
-        .header-tools { display: flex; align-items: center; gap: 20px; }
-        .search-box {
-            position: relative; display: flex; align-items: center;
+        .header-tools { display: flex; align-items: center; gap: 16px; }
+        
+        .device-info-badge {
+            display: flex; align-items: center; gap: 10px; font-size: 15px; color: #cbd5e1;
+            background: rgba(30, 41, 59, 0.7); border: 1px solid #475569; padding: 6px 16px; border-radius: 20px;
         }
+        .device-info-badge span.remote-highlight { color: #38bdf8; font-weight: bold; }
+
+        .search-box { position: relative; display: flex; align-items: center; }
         .search-input {
-            width: 320px; height: 44px; background: rgba(30, 41, 59, 0.85); border: 2px solid #475569;
-            border-radius: 22px; padding: 0 45px 0 20px; font-size: 18px; color: #ffffff; outline: none;
+            width: 280px; height: 40px; background: rgba(30, 41, 59, 0.85); border: 2px solid #475569;
+            border-radius: 20px; padding: 0 40px 0 16px; font-size: 16px; color: #ffffff; outline: none;
             transition: all 0.2s ease;
         }
-        .search-input:focus {
-            width: 400px; border-color: #38bdf8; box-shadow: 0 0 20px rgba(56, 189, 248, 0.5);
-        }
-        .search-icon { position: absolute; right: 16px; font-size: 18px; color: #94a3b8; pointer-events: none; }
+        .search-input:focus { width: 340px; border-color: #38bdf8; box-shadow: 0 0 20px rgba(56, 189, 248, 0.5); }
+        .search-icon { position: absolute; right: 14px; font-size: 16px; color: #94a3b8; pointer-events: none; }
 
         .cloud-status {
-            display: flex; align-items: center; gap: 10px; font-size: 17px; color: #4ade80; font-weight: bold;
-            background: rgba(15, 23, 42, 0.8); padding: 7px 16px; border-radius: 20px; border: 1px solid #22c55e;
+            display: flex; align-items: center; gap: 8px; font-size: 16px; color: #4ade80; font-weight: bold;
+            background: rgba(15, 23, 42, 0.8); padding: 6px 14px; border-radius: 20px; border: 1px solid #22c55e;
         }
         .cloud-dot { width: 10px; height: 10px; border-radius: 50%; background: #4ade80; box-shadow: 0 0 10px #4ade80; }
 
         /* Category Filter Pills */
         #filters-bar {
-            display: flex; gap: 12px; padding: 0 50px; margin-top: 5px; z-index: 10; overflow-x: auto;
+            display: flex; gap: 10px; padding: 0 45px; margin-top: 5px; z-index: 10; overflow-x: auto;
         }
         #filters-bar::-webkit-scrollbar { display: none; }
         .filter-pill {
             flex-shrink: 0; background: rgba(30, 41, 59, 0.65); border: 2px solid #475569; color: #94a3b8;
-            padding: 7px 20px; border-radius: 20px; font-size: 16px; font-weight: bold; cursor: pointer;
+            padding: 6px 18px; border-radius: 20px; font-size: 15px; font-weight: bold; cursor: pointer;
             transition: all 0.2s ease; outline: none;
         }
         .filter-pill:hover, .filter-pill.active, .filter-pill:focus {
@@ -64,50 +67,50 @@
 
         /* Hero Showcase */
         #hero-area {
-            position: relative; height: 420px; padding: 15px 50px; display: flex;
+            position: relative; height: 400px; padding: 10px 45px; display: flex;
             align-items: center; justify-content: space-between;
         }
-        .hero-info { max-width: 1080px; z-index: 5; }
-        .badges-row { display: flex; gap: 10px; margin-bottom: 10px; }
+        .hero-info { max-width: 1050px; z-index: 5; }
+        .badges-row { display: flex; gap: 10px; margin-bottom: 8px; }
         .tag {
             background: rgba(30, 41, 59, 0.85); border: 1px solid #64748b; color: #38bdf8;
-            font-size: 16px; font-weight: bold; padding: 3px 12px; border-radius: 8px;
+            font-size: 15px; font-weight: bold; padding: 3px 12px; border-radius: 8px;
         }
         .tag.gold { background: rgba(234, 179, 8, 0.15); border-color: #eab308; color: #facc15; }
         .tag.green { background: rgba(34, 197, 94, 0.15); border-color: #22c55e; color: #4ade80; }
         .hero-title {
-            font-size: 48px; font-weight: 900; color: #ffffff; margin-bottom: 8px;
+            font-size: 44px; font-weight: 900; color: #ffffff; margin-bottom: 8px;
             text-shadow: 0 0 25px rgba(168, 85, 247, 0.5);
         }
-        .hero-desc { font-size: 20px; color: #cbd5e1; line-height: 1.4; margin-bottom: 16px; min-height: 56px; }
-        .hero-controls-hint { font-size: 18px; color: #c084fc; font-weight: bold; margin-bottom: 20px; }
+        .hero-desc { font-size: 19px; color: #cbd5e1; line-height: 1.4; margin-bottom: 14px; min-height: 52px; }
+        .hero-controls-hint { font-size: 17px; color: #c084fc; font-weight: bold; margin-bottom: 18px; }
         .btn-play {
             background: linear-gradient(135deg, #06b6d4, #a855f7); color: #ffffff;
-            font-size: 26px; font-weight: 800; padding: 13px 44px; border-radius: 14px; border: none;
+            font-size: 24px; font-weight: 800; padding: 12px 42px; border-radius: 14px; border: none;
             cursor: pointer; box-shadow: 0 0 30px rgba(6, 182, 212, 0.7); transition: all 0.2s ease; outline: none;
         }
         .btn-play:focus, .btn-play:hover, .btn-play.active {
             transform: scale(1.08); box-shadow: 0 0 45px rgba(168, 85, 247, 1); border: 3px solid #ffffff;
         }
         .hero-poster {
-            width: 480px; height: 290px; border-radius: 20px; border: 3px solid rgba(255, 255, 255, 0.2);
+            width: 460px; height: 280px; border-radius: 18px; border: 3px solid rgba(255, 255, 255, 0.2);
             box-shadow: 0 0 45px rgba(0, 0, 0, 0.9); object-fit: cover;
         }
 
         /* Carousel Track */
         #carousel-container {
-            width: 100%; height: 380px; padding: 0 50px 20px; position: relative;
+            width: 100%; height: 380px; padding: 0 45px 15px; position: relative;
         }
         .carousel-track {
-            display: flex; gap: 20px; overflow-x: auto; padding: 15px 5px; scroll-behavior: smooth;
+            display: flex; gap: 18px; overflow-x: auto; padding: 12px 5px; scroll-behavior: smooth;
         }
         .carousel-track::-webkit-scrollbar { display: none; }
 
         .game-card {
-            flex: 0 0 200px; height: 275px; background: #111827; border: 3px solid #1f2937;
-            border-radius: 18px; padding: 12px; display: flex; flex-direction: column;
+            flex: 0 0 195px; height: 275px; background: #111827; border: 3px solid #1f2937;
+            border-radius: 16px; padding: 10px; display: flex; flex-direction: column;
             align-items: center; justify-content: space-between; cursor: pointer;
-            transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1); outline: none;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); outline: none;
         }
         .game-card:hover, .game-card:focus, .game-card.focused {
             transform: translateY(-8px) scale(1.06); border-color: #38bdf8;
@@ -115,12 +118,12 @@
             background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
         }
         .card-icon {
-            width: 115px; height: 115px; border-radius: 16px; object-fit: cover;
+            width: 115px; height: 115px; border-radius: 14px; object-fit: cover;
             box-shadow: 0 6px 16px rgba(0, 0, 0, 0.6); border: 2px solid rgba(255, 255, 255, 0.1);
         }
-        .card-name { font-size: 16px; font-weight: 800; text-align: center; color: #f1f5f9; margin-top: 6px; line-height: 1.25; }
-        .card-meta { display: flex; justify-content: space-between; width: 100%; font-size: 13px; color: #94a3b8; }
-        .card-badge { background: rgba(56, 189, 248, 0.15); color: #38bdf8; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: bold; }
+        .card-name { font-size: 15px; font-weight: 800; text-align: center; color: #f1f5f9; margin-top: 4px; line-height: 1.25; }
+        .card-meta { display: flex; justify-content: space-between; width: 100%; font-size: 12px; color: #94a3b8; }
+        .card-badge { background: rgba(56, 189, 248, 0.15); color: #38bdf8; padding: 2px 6px; border-radius: 6px; font-size: 10px; font-weight: bold; }
 
         /* Fullscreen Player */
         #player-view {
@@ -131,8 +134,8 @@
         #game-frame { width: 1920px; height: 1080px; border: none; display: block; }
         #exit-bar {
             position: absolute; top: 15px; left: 20px; background: rgba(15, 23, 42, 0.9);
-            border: 2px solid #ef4444; color: #ffffff; font-size: 19px; font-weight: bold;
-            padding: 8px 22px; border-radius: 12px; cursor: pointer; box-shadow: 0 0 20px rgba(239, 68, 68, 0.6);
+            border: 2px solid #ef4444; color: #ffffff; font-size: 18px; font-weight: bold;
+            padding: 8px 20px; border-radius: 12px; cursor: pointer; box-shadow: 0 0 20px rgba(239, 68, 68, 0.6);
             z-index: 1010; transition: all 0.2s ease;
         }
         #exit-bar:hover { background: #ef4444; transform: scale(1.05); }
@@ -143,29 +146,35 @@
 <div id="hub-view">
     <header>
         <div class="brand">
-            <span class="logo-badge">CLOUD ARCADE 200+</span>
-            <span class="brand-title">ארקייד נוסטלגיה וענן — מעל 200 משחקי רטרו לטלוויזיה LG webOS</span>
+            <span class="logo-badge">CLOUD ARCADE 1,200+</span>
+            <span class="brand-title">ארקייד נוסטלגיה וענן — 1,256 משחקים לטלוויזיה LG webOS</span>
         </div>
         <div class="header-tools">
+            <div class="device-info-badge">
+                <span id="hud-tv-model">LG Smart TV (4K)</span>
+                <span>•</span>
+                <span id="hud-remote-model" class="remote-highlight">🎮 LG Magic Remote (MR24 / ג'יירו)</span>
+            </div>
             <div class="search-box">
                 <span class="search-icon">🔍</span>
                 <input type="text" id="search-input" class="search-input" placeholder="חיפוש משחק בעברית / אנגלית...">
             </div>
             <div class="cloud-status">
                 <div class="cloud-dot"></div>
-                <span id="catalog-count-label">206 משחקים פעילים</span>
+                <span id="catalog-count-label">1,256 משחקים פעילים</span>
             </div>
         </div>
     </header>
 
     <div id="filters-bar">
-        <button class="filter-pill active" data-cat="ALL">🌟 הכל (206)</button>
+        <button class="filter-pill active" data-cat="ALL">🌟 הכל (1,256)</button>
         <button class="filter-pill" data-cat="POINTER">🎯 סמן Magic Remote (5)</button>
-        <button class="filter-pill" data-cat="NES">🎮 נינטנדו NES (60)</button>
-        <button class="filter-pill" data-cat="SEGA">🦔 סגה Genesis (45)</button>
-        <button class="filter-pill" data-cat="DOS">💀 משחקי DOS (35)</button>
-        <button class="filter-pill" data-cat="FLASH">⚡ פלאש ורשת (35)</button>
-        <button class="filter-pill" data-cat="ARCADE">🕹️ ארקייד מטבעות (25)</button>
+        <button class="filter-pill" data-cat="NES">🎮 נינטנדו NES (320)</button>
+        <button class="filter-pill" data-cat="SEGA">🦔 סגה Genesis (260)</button>
+        <button class="filter-pill" data-cat="GBA">👾 גיים בוי / GBA (220)</button>
+        <button class="filter-pill" data-cat="DOS">💀 מחשב DOS (160)</button>
+        <button class="filter-pill" data-cat="FLASH">⚡ פלאש ורשת (150)</button>
+        <button class="filter-pill" data-cat="ARCADE">🕹️ ארקייד מטבעות (130)</button>
         <button class="filter-pill" data-cat="OFFLINE">💾 מותקן מקומית (16)</button>
     </div>
 
@@ -196,7 +205,8 @@
     <iframe id="game-frame" src="about:blank"></iframe>
 </div>
 
-<!-- Load Database -->
+<!-- Scripts -->
+<script src="js/tv_remote_adapter.js"></script>
 <script src="games_data.js"></script>
 
 <script>
@@ -229,6 +239,8 @@ function applyFilters() {
     // Category filter
     if (currentFilter === 'OFFLINE') {
         list = list.filter(g => g.is_offline);
+    } else if (currentFilter === 'GBA') {
+        list = list.filter(g => g.platform.includes('Game Boy') || g.platform.includes('GBA'));
     } else if (currentFilter !== 'ALL') {
         list = list.filter(g => g.cat === currentFilter);
     }
@@ -248,6 +260,9 @@ function applyFilters() {
     buildCards();
 }
 
+// Windowed rendering for fast 60FPS on TV
+const RENDER_LIMIT = 100;
+
 function buildCards() {
     track.innerHTML = '';
     selectedIndex = 0;
@@ -257,7 +272,9 @@ function buildCards() {
         return;
     }
 
-    filteredList.forEach((g, idx) => {
+    const itemsToRender = filteredList.slice(0, RENDER_LIMIT);
+
+    itemsToRender.forEach((g, idx) => {
         const card = document.createElement('div');
         card.className = `game-card ${idx === 0 ? 'focused' : ''}`;
         card.innerHTML = `
@@ -316,6 +333,10 @@ function launchGame() {
     document.getElementById('player-view').classList.add('active');
     isInGame = true;
     frame.focus();
+
+    if (window.tvRemoteAdapter && g.cat === 'POINTER') {
+        window.tvRemoteAdapter.enableVirtualCursor(frame);
+    }
 }
 
 function closeGame() {
@@ -325,6 +346,10 @@ function closeGame() {
     document.getElementById('player-view').classList.remove('active');
     isInGame = false;
     window.focus();
+
+    if (window.tvRemoteAdapter) {
+        window.tvRemoteAdapter.disableVirtualCursor();
+    }
 }
 
 document.getElementById('btn-hero-play').addEventListener('click', launchGame);
@@ -354,11 +379,12 @@ window.addEventListener('keydown', (e) => {
         if (e.keyCode === 461 || e.keyCode === 27) { // LG Back key or ESC
             closeGame();
             e.preventDefault();
+        } else if (window.tvRemoteAdapter) {
+            window.tvRemoteAdapter.handleGameInput(e, document.getElementById('game-frame'));
         }
         return;
     }
     
-    // Don't intercept if user is typing in search
     if (document.activeElement === searchInput) {
         if (e.keyCode === 13) {
             searchInput.blur();
@@ -371,7 +397,7 @@ window.addEventListener('keydown', (e) => {
         case 37: selectGame(selectedIndex + 1); break; // Left Arrow
         case 39: selectGame(selectedIndex - 1); break; // Right Arrow
         case 13: launchGame(); break; // OK Button
-        case 461: // LG Back key
+        case 461:
         case 27:
             if (searchQuery.length > 0) {
                 searchQuery = '';
@@ -383,6 +409,7 @@ window.addEventListener('keydown', (e) => {
 });
 
 applyFilters();
+if (window.tvRemoteAdapter) window.tvRemoteAdapter.updateHUD();
 </script>
 </body>
 </html>
