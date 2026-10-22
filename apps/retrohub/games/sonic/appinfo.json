@@ -1,0 +1,19 @@
+{
+  "id": "com.sega.ultimateflashsonic",
+  "version": "1.0.1",
+  "vendor": "Dennis van den Broek / Sonic Team (Hebrew Edition)",
+  "type": "web",
+  "main": "index.html",
+  "title": "אולטימייט פלאש סוניק בעברית",
+  "icon": "icon.png",
+  "largeIcon": "largeIcon.png",
+  "bgImage": "splash.png",
+  "splashBackground": "splash.png",
+  "resolution": "1920x1080",
+  "bgColor": "#0a0f23",
+  "iconColor": "#0055FF",
+  "supportGIP": false,
+  "requiredPermissions": [],
+  "handlesRelaunch": true,
+  "uiRevision": 2
+}

@@ -1,0 +1,19 @@
+{
+  "id": "com.rovio.angrybirds",
+  "version": "4.0.0",
+  "vendor": "Rovio Entertainment Ltd.",
+  "type": "web",
+  "main": "index.html",
+  "title": "Angry Birds",
+  "icon": "icon.png",
+  "largeIcon": "largeIcon.png",
+  "bgImage": "splash.png",
+  "splashBackground": "splash.png",
+  "resolution": "1920x1080",
+  "bgColor": "#000000",
+  "iconColor": "#E21836",
+  "supportGIP": false,
+  "requiredPermissions": [],
+  "handlesRelaunch": true,
+  "uiRevision": 2
+}

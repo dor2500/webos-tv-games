@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1920, height=1080, initial-scale=1.0, user-scalable=no">
+    <title>אייר-קסוניקס 3D בעברית - LG webOS TV</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        body, html {
+            width: 1920px;
+            height: 1080px;
+            overflow: hidden;
+            background: radial-gradient(circle at 50% 30%, #0c192c 0%, #020617 100%);
+            color: #ffffff;
+        }
+        #game-container {
+            position: relative;
+            width: 1920px;
+            height: 1080px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        /* HUD Bar */
+        #hud {
+            width: 1800px;
+            height: 90px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 40px;
+            margin-top: 15px;
+            background: rgba(12, 25, 44, 0.85);
+            border: 2px solid #06b6d4;
+            border-radius: 20px;
+            box-shadow: 0 0 25px rgba(6, 182, 212, 0.4);
+            font-size: 28px;
+            font-weight: bold;
+            z-index: 10;
+        }
+        .hud-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .hud-label {
+            color: #94a3b8;
+            font-size: 22px;
+        }
+        .hud-value {
+            color: #38bdf8;
+            font-size: 32px;
+            text-shadow: 0 0 10px rgba(56, 189, 248, 0.6);
+        }
+        #progress-bar-container {
+            width: 320px;
+            height: 24px;
+            background: #0f172a;
+            border-radius: 12px;
+            border: 1px solid #334155;
+            overflow: hidden;
+            position: relative;
+        }
+        #progress-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #06b6d4, #10b981);
+            border-radius: 12px;
+            transition: width 0.2s ease;
+        }
+        #target-marker {
+            position: absolute;
+            left: 80%;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background: #f43f5e;
+            box-shadow: 0 0 6px #f43f5e;
+        }
+
+        /* 3D Canvas */
+        #canvas-wrapper {
+            position: relative;
+            margin-top: 15px;
+            width: 1700px;
+            height: 920px;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 0 50px rgba(6, 182, 212, 0.3);
+            border: 2px solid #1e293b;
+        }
+        canvas {
+            display: block;
+            width: 1700px;
+            height: 920px;
+        }
+
+        /* Overlays */
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 1920px;
+            height: 1080px;
+            background: rgba(2, 6, 23, 0.93);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            backdrop-filter: blur(8px);
+        }
+        .overlay.hidden {
+            display: none;
+        }
+        .menu-card {
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(8, 14, 26, 0.95));
+            border: 3px solid #06b6d4;
+            border-radius: 28px;
+            padding: 50px 80px;
+            text-align: center;
+            box-shadow: 0 0 50px rgba(6, 182, 212, 0.5);
+            max-width: 900px;
+        }
+        .menu-title {
+            font-size: 64px;
+            color: #38bdf8;
+            text-shadow: 0 0 25px rgba(56, 189, 248, 0.7);
+            margin-bottom: 20px;
+        }
+        .menu-subtitle {
+            font-size: 26px;
+            color: #94a3b8;
+            margin-bottom: 40px;
+        }
+        .btn-list {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            width: 420px;
+            margin: 0 auto;
+        }
+        .menu-btn {
+            background: #0f172a;
+            color: #ffffff;
+            font-size: 30px;
+            font-weight: bold;
+            padding: 16px 32px;
+            border: 2px solid #06b6d4;
+            border-radius: 16px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            outline: none;
+        }
+        .menu-btn:hover, .menu-btn:focus, .menu-btn.active {
+            background: #06b6d4;
+            color: #020617;
+            border-color: #ffffff;
+            transform: scale(1.05);
+            box-shadow: 0 0 30px rgba(6, 182, 212, 0.8);
+        }
+        .instructions-box {
+            margin-top: 30px;
+            padding: 20px;
+            background: rgba(15, 23, 42, 0.6);
+            border-radius: 14px;
+            font-size: 22px;
+            color: #cbd5e1;
+            line-height: 1.8;
+            text-align: right;
+        }
+    </style>
+</head>
+<body>
+<div id="game-container">
+    <div id="hud">
+        <div class="hud-item">
+            <span class="hud-label">נִיקוּד:</span>
+            <span id="score-val" class="hud-value">0</span>
+        </div>
+        <div class="hud-item">
+            <span class="hud-label">שָׁלָב:</span>
+            <span id="level-val" class="hud-value">1</span>
+        </div>
+        <div class="hud-item">
+            <span class="hud-label">שֶׁטַח כָּבוּשׁ:</span>
+            <div id="progress-bar-container">
+                <div id="progress-fill"></div>
+                <div id="target-marker"></div>
+            </div>
+            <span id="progress-text" class="hud-value" style="font-size: 26px; margin-right: 10px;">0% / 80%</span>
+        </div>
+        <div class="hud-item">
+            <span class="hud-label">כְּלֵי טַיִס:</span>
+            <span id="lives-val" class="hud-value">🛸🛸🛸</span>
+        </div>
+    </div>
+
+    <div id="canvas-wrapper">
+        <canvas id="airCanvas" width="1700" height="920"></canvas>
+    </div>
+
+    <div id="menu-overlay" class="overlay">
+        <div class="menu-card">
+            <h1 class="menu-title">אייר-קסוניקס 3D</h1>
+            <p class="menu-subtitle">גרסת תלת-מימד חיה לטלוויזיות LG webOS Smart TV — כבוש 80% מהזירה המרחפת!</p>
+            <div class="btn-list">
+                <button id="btn-start" class="menu-btn active">הַתְחֵל מִשְׂחָק</button>
+            </div>
+            <div class="instructions-box">
+                <p>🎮 <b>שליטה:</b> נווט את רחפן הפרופלור עם חיצי שלט LG (D-Pad) או גיימפאד.</p>
+                <p>🛡️ <b>מטרה:</b> חתוך שטחים בזירה התלת-מימדית. שטח שנסגר ללא כדורים קופצים עולה כבלוקים מוגבהים ונכבש!</p>
+                <p>⚠️ <b>זהירות:</b> אל תיתן לכדורים הקופצים לפגוע בשובל הלייזר שלך בזמן חיתוך!</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="msg-overlay" class="overlay hidden">
+        <div class="menu-card">
+            <h1 id="msg-title" class="menu-title">ניצחון!</h1>
+            <p id="msg-sub" class="menu-subtitle">עברת לשלב הבא</p>
+            <div class="btn-list">
+                <button id="btn-continue" class="menu-btn active">הַמְשֵׁךְ</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// --- Web Audio Synth ---
+class AirAudio {
+    constructor() { this.ctx = null; }
+    init() {
+        if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        if (this.ctx.state === 'suspended') this.ctx.resume();
+    }
+    tone(freq, type, dur, vol=0.1) {
+        if (!this.ctx) return;
+        try {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+            gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + dur);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start();
+            osc.stop(this.ctx.currentTime + dur);
+        } catch(e) {}
+    }
+    laser() { this.tone(480, 'sawtooth', 0.04, 0.04); }
+    build() {
+        this.tone(220, 'sine', 0.15, 0.15);
+        setTimeout(() => this.tone(330, 'sine', 0.15, 0.15), 60);
+        setTimeout(() => this.tone(550, 'sine', 0.25, 0.18), 120);
+    }
+    explode() {
+        this.tone(120, 'sawtooth', 0.4, 0.25);
+        setTimeout(() => this.tone(70, 'square', 0.5, 0.3), 80);
+    }
+    win() {
+        [392, 523, 659, 784, 1046].forEach((f, i) => {
+            setTimeout(() => this.tone(f, 'sine', 0.25, 0.2), i * 110);
+        });
+    }
+}
+const audio = new AirAudio();
+
+// --- 3D Isometric Engine ---
+const canvas = document.getElementById('airCanvas');
+const ctx = canvas.getContext('2d');
+
+const COLS = 60;
+const ROWS = 36;
+const TILE_EMPTY = 0;
+const TILE_FILLED = 1;
+const TILE_TRAIL = 2;
+
+let grid = [];
+let score = 0;
+let level = 1;
+let lives = 3;
+let gameState = 'MENU';
+
+// 3D Isometric projection math
+const ORIGIN_X = 850;
+const ORIGIN_Y = 160;
+const TILE_W = 24;
+const TILE_H = 14;
+const BLOCK_HEIGHT = 18;
+
+function toIso(gx, gy, gz = 0) {
+    const screenX = ORIGIN_X + (gx - gy) * TILE_W;
+    const screenY = ORIGIN_Y + (gx + gy) * TILE_H - gz * BLOCK_HEIGHT;
+    return { x: screenX, y: screenY };
+}
+
+let player = {
+    x: 0,
+    y: 0,
+    dx: 0,
+    dy: 0,
+    nextDx: 0,
+    nextDy: 0,
+    drawing: false,
+    propellerAngle: 0,
+    tilt: 0
+};
+
+let balls = [];
+let trail = [];
+let totalTiles = COLS * ROWS;
+let filledCount = 0;
+
+function initGrid() {
+    grid = [];
+    filledCount = 0;
+    for (let y = 0; y < ROWS; y++) {
+        grid[y] = [];
+        for (let x = 0; x < COLS; x++) {
+            if (x === 0 || x === COLS - 1 || y === 0 || y === ROWS - 1) {
+                grid[y][x] = TILE_FILLED;
+                filledCount++;
+            } else {
+                grid[y][x] = TILE_EMPTY;
+            }
+        }
+    }
+}
+
+function spawnBalls() {
+    balls = [];
+    const count = Math.min(2 + level, 8);
+    for (let i = 0; i < count; i++) {
+        let bx, by;
+        do {
+            bx = Math.floor(Math.random() * (COLS - 6)) + 3;
+            by = Math.floor(Math.random() * (ROWS - 6)) + 3;
+        } while (grid[by] && grid[by][bx] !== TILE_EMPTY);
+
+        const spd = 0.18 + level * 0.025;
+        const ang = Math.random() * Math.PI * 2;
+        balls.push({
+            x: bx,
+            y: by,
+            vx: Math.cos(ang) * spd,
+            vy: Math.sin(ang) * spd,
+            radius: 8,
+            color: i % 2 === 0 ? '#f43f5e' : '#eab308'
+        });
+    }
+}
+
+function resetPlayer() {
+    player.x = 0;
+    player.y = 0;
+    player.dx = 0;
+    player.dy = 0;
+    player.nextDx = 0;
+    player.nextDy = 0;
+    player.drawing = false;
+    trail = [];
+}
+
+function closeArea() {
+    audio.build();
+    trail.forEach(p => grid[p.y][p.x] = TILE_FILLED);
+    trail = [];
+    player.drawing = false;
+
+    // Flood fill from balls
+    let visited = Array.from({ length: ROWS }, () => new Uint8Array(COLS));
+    balls.forEach(b => {
+        const gx = Math.floor(b.x);
+        const gy = Math.floor(b.y);
+        if (gx >= 0 && gx < COLS && gy >= 0 && gy < ROWS && grid[gy][gx] === TILE_EMPTY && !visited[gy][gx]) {
+            floodMark(gx, gy, visited);
+        }
+    });
+
+    let newlyClaimed = 0;
+    for (let y = 0; y < ROWS; y++) {
+        for (let x = 0; x < COLS; x++) {
+            if (grid[y][x] === TILE_EMPTY && !visited[y][x]) {
+                grid[y][x] = TILE_FILLED;
+                newlyClaimed++;
+            }
+        }
+    }
+
+    score += newlyClaimed * 30 * level;
+    checkProgress();
+}
+
+function floodMark(sx, sy, visited) {
+    const queue = [[sx, sy]];
+    visited[sy][sx] = 1;
+    while (queue.length > 0) {
+        const [x, y] = queue.pop();
+        const neighbors = [[x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]];
+        for (let i = 0; i < neighbors.length; i++) {
+            const [nx, ny] = neighbors[i];
+            if (nx >= 0 && nx < COLS && ny >= 0 && ny < ROWS) {
+                if (grid[ny][nx] === TILE_EMPTY && !visited[ny][nx]) {
+                    visited[ny][nx] = 1;
+                    queue.push([nx, ny]);
+                }
+            }
+        }
+    }
+}
+
+function checkProgress() {
+    let filled = 0;
+    for (let y = 0; y < ROWS; y++) {
+        for (let x = 0; x < COLS; x++) {
+            if (grid[y][x] === TILE_FILLED) filled++;
+        }
+    }
+    filledCount = filled;
+    const percent = Math.floor((filledCount / totalTiles) * 100);
+    updateHUD(percent);
+
+    if (percent >= 80) {
+        gameState = 'LEVEL_CLEAR';
+        audio.win();
+        document.getElementById('msg-title').innerText = `שלב ${level} הושלם בהצלחה!`;
+        document.getElementById('msg-sub').innerText = `כבשת ${percent}% מהזירה המרחפת!`;
+        document.getElementById('msg-overlay').classList.remove('hidden');
+    }
+}
+
+function playerDeath() {
+    audio.explode();
+    lives--;
+    trail.forEach(p => grid[p.y][p.x] = TILE_EMPTY);
+    trail = [];
+    player.drawing = false;
+
+    if (lives <= 0) {
+        gameState = 'GAMEOVER';
+        document.getElementById('msg-title').innerText = 'המשחק הסתיים!';
+        document.getElementById('msg-sub').innerText = `ניקוד סופי: ${score}`;
+        document.getElementById('msg-overlay').classList.remove('hidden');
+    } else {
+        resetPlayer();
+    }
+    updateHUD();
+}
+
+function updateHUD(percent) {
+    document.getElementById('score-val').innerText = score;
+    document.getElementById('level-val').innerText = level;
+    let crafts = '';
+    for (let i = 0; i < lives; i++) crafts += '🛸';
+    document.getElementById('lives-val').innerText = crafts || '💥';
+
+    const p = percent !== undefined ? percent : Math.min(100, Math.floor((filledCount / totalTiles) * 100));
+    document.getElementById('progress-fill').style.width = `${p}%`;
+    document.getElementById('progress-text').innerText = `${p}% / 80%`;
+}
+
+function update() {
+    if (gameState !== 'PLAYING') return;
+
+    player.propellerAngle += 0.4;
+
+    if (player.nextDx !== 0 || player.nextDy !== 0) {
+        player.dx = player.nextDx;
+        player.dy = player.nextDy;
+    }
+
+    if (player.dx !== 0 || player.dy !== 0) {
+        const nx = player.x + player.dx;
+        const ny = player.y + player.dy;
+
+        if (nx >= 0 && nx < COLS && ny >= 0 && ny < ROWS) {
+            const tile = grid[ny][nx];
+            if (tile === TILE_TRAIL) {
+                playerDeath();
+                return;
+            }
+
+            player.x = nx;
+            player.y = ny;
+
+            if (tile === TILE_EMPTY) {
+                player.drawing = true;
+                grid[ny][nx] = TILE_TRAIL;
+                trail.push({ x: nx, y: ny });
+                audio.laser();
+            } else if (tile === TILE_FILLED) {
+                if (player.drawing) {
+                    closeArea();
+                }
+            }
+        }
+    }
+
+    // Update bouncing spiked 3D balls
+    balls.forEach(b => {
+        b.x += b.vx;
+        b.y += b.vy;
+
+        const gx = Math.floor(b.x);
+        const gy = Math.floor(b.y);
+
+        if (gx <= 0 || gx >= COLS - 1 || gy <= 0 || gy >= ROWS - 1 || (grid[gy] && grid[gy][gx] === TILE_FILLED)) {
+            b.vx = -b.vx;
+            b.vy = -b.vy;
+            b.x += b.vx * 1.5;
+            b.y += b.vy * 1.5;
+        }
+
+        if (grid[gy] && grid[gy][gx] === TILE_TRAIL) {
+            playerDeath();
+            return;
+        }
+    });
+}
+
+function render() {
+    ctx.clearRect(0, 0, 1700, 920);
+
+    // 1. Draw 3D Base Grid & Raised Blocks
+    for (let y = 0; y < ROWS; y++) {
+        for (let x = 0; x < COLS; x++) {
+            const tile = grid[y][x];
+            const p = toIso(x, y, 0);
+
+            if (tile === TILE_FILLED) {
+                // Draw 3D Raised Isometric Block
+                drawIsoBlock(x, y, 1, '#0284c7', '#0369a1', '#0ea5e9');
+            } else if (tile === TILE_TRAIL) {
+                // Draw glowing laser trail
+                drawIsoBlock(x, y, 0.4, '#eab308', '#ca8a04', '#facc15');
+            } else {
+                // Empty grid line
+                if ((x + y) % 4 === 0) {
+                    ctx.fillStyle = '#0f172a';
+                    ctx.beginPath();
+                    ctx.moveTo(p.x, p.y);
+                    ctx.lineTo(p.x + TILE_W, p.y + TILE_H);
+                    ctx.lineTo(p.x, p.y + TILE_H * 2);
+                    ctx.lineTo(p.x - TILE_W, p.y + TILE_H);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.strokeStyle = '#1e293b';
+                    ctx.stroke();
+                }
+            }
+        }
+    }
+
+    // 2. Draw 3D Spiked Balls
+    balls.forEach(b => {
+        const bp = toIso(b.x, b.y, 0.5);
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(bp.x, bp.y, b.radius, 0, Math.PI * 2);
+        ctx.fillStyle = b.color;
+        ctx.shadowColor = b.color;
+        ctx.shadowBlur = 15;
+        ctx.fill();
+
+        // Spikes
+        for (let a = 0; a < Math.PI * 2; a += Math.PI / 4) {
+            ctx.beginPath();
+            ctx.moveTo(bp.x + Math.cos(a) * b.radius, bp.y + Math.sin(a) * b.radius);
+            ctx.lineTo(bp.x + Math.cos(a) * (b.radius + 5), bp.y + Math.sin(a) * (b.radius + 5));
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        }
+        ctx.restore();
+    });
+
+    // 3. Draw 3D AirXonix Propeller Craft
+    const craftP = toIso(player.x, player.y, 1.2);
+    ctx.save();
+    ctx.translate(craftP.x, craftP.y);
+
+    // Dynamic Craft Shadow on grid below
+    ctx.beginPath();
+    ctx.ellipse(0, BLOCK_HEIGHT * 1.2, 16, 8, 0, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+    ctx.fill();
+
+    // Craft Body (Yellow/Gold futuristic craft)
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 18, 12, 0, 0, Math.PI * 2);
+    ctx.fillStyle = '#facc15';
+    ctx.shadowColor = '#facc15';
+    ctx.shadowBlur = 18;
+    ctx.fill();
+    ctx.strokeStyle = '#eab308';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Glass Cockpit Dome
+    ctx.beginPath();
+    ctx.ellipse(0, -2, 9, 6, 0, 0, Math.PI * 2);
+    ctx.fillStyle = '#38bdf8';
+    ctx.fill();
+
+    // Spinning Top Propeller Blade
+    ctx.save();
+    ctx.rotate(player.propellerAngle);
+    ctx.beginPath();
+    ctx.ellipse(0, -10, 24, 3, 0, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+    ctx.shadowColor = '#ffffff';
+    ctx.shadowBlur = 8;
+    ctx.fill();
+    ctx.restore();
+
+    ctx.restore();
+}
+
+function drawIsoBlock(gx, gy, hFactor, topColor, leftColor, rightColor) {
+    const p = toIso(gx, gy, hFactor);
+    const base = toIso(gx, gy, 0);
+    const h = (base.y - p.y);
+
+    // Top face
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y);
+    ctx.lineTo(p.x + TILE_W, p.y + TILE_H);
+    ctx.lineTo(p.x, p.y + TILE_H * 2);
+    ctx.lineTo(p.x - TILE_W, p.y + TILE_H);
+    ctx.closePath();
+    ctx.fillStyle = topColor;
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Right face
+    ctx.beginPath();
+    ctx.moveTo(p.x + TILE_W, p.y + TILE_H);
+    ctx.lineTo(p.x, p.y + TILE_H * 2);
+    ctx.lineTo(p.x, p.y + TILE_H * 2 + h);
+    ctx.lineTo(p.x + TILE_W, p.y + TILE_H + h);
+    ctx.closePath();
+    ctx.fillStyle = rightColor;
+    ctx.fill();
+
+    // Left face
+    ctx.beginPath();
+    ctx.moveTo(p.x - TILE_W, p.y + TILE_H);
+    ctx.lineTo(p.x, p.y + TILE_H * 2);
+    ctx.lineTo(p.x, p.y + TILE_H * 2 + h);
+    ctx.lineTo(p.x - TILE_W, p.y + TILE_H + h);
+    ctx.closePath();
+    ctx.fillStyle = leftColor;
+    ctx.fill();
+}
+
+function gameLoop() {
+    update();
+    render();
+    pollGamepad();
+    requestAnimationFrame(gameLoop);
+}
+
+// Controller Inputs
+window.addEventListener('keydown', (e) => {
+    audio.init();
+    switch (e.keyCode) {
+        case 37: player.nextDx = -1; player.nextDy = 0; break;
+        case 38: player.nextDx = 0; player.nextDy = -1; break;
+        case 39: player.nextDx = 1; player.nextDy = 0; break;
+        case 40: player.nextDx = 0; player.nextDy = 1; break;
+        case 13:
+            if (gameState === 'MENU') startGame();
+            else if (gameState === 'LEVEL_CLEAR') nextLevel();
+            else if (gameState === 'GAMEOVER') restartGame();
+            break;
+        case 461:
+        case 27:
+            if (gameState === 'PLAYING') {
+                gameState = 'MENU';
+                document.getElementById('menu-overlay').classList.remove('hidden');
+            }
+            break;
+    }
+});
+
+function pollGamepad() {
+    const gp = navigator.getGamepads ? navigator.getGamepads()[0] : null;
+    if (!gp) return;
+    const th = 0.5;
+    if (gp.axes[0] < -th || gp.buttons[14]?.pressed) { player.nextDx = -1; player.nextDy = 0; }
+    else if (gp.axes[0] > th || gp.buttons[15]?.pressed) { player.nextDx = 1; player.nextDy = 0; }
+    else if (gp.axes[1] < -th || gp.buttons[12]?.pressed) { player.nextDx = 0; player.nextDy = -1; }
+    else if (gp.axes[1] > th || gp.buttons[13]?.pressed) { player.nextDx = 0; player.nextDy = 1; }
+
+    if (gp.buttons[0]?.pressed) {
+        if (gameState === 'MENU') startGame();
+        else if (gameState === 'LEVEL_CLEAR') nextLevel();
+        else if (gameState === 'GAMEOVER') restartGame();
+    }
+}
+
+function startGame() {
+    audio.init();
+    gameState = 'PLAYING';
+    document.getElementById('menu-overlay').classList.add('hidden');
+    document.getElementById('msg-overlay').classList.add('hidden');
+    initGrid();
+    resetPlayer();
+    spawnBalls();
+    updateHUD(0);
+}
+
+function nextLevel() {
+    level++;
+    lives = Math.min(lives + 1, 5);
+    startGame();
+}
+
+function restartGame() {
+    score = 0;
+    level = 1;
+    lives = 3;
+    startGame();
+}
+
+document.getElementById('btn-start').addEventListener('click', startGame);
+document.getElementById('btn-continue').addEventListener('click', () => {
+    if (gameState === 'GAMEOVER') restartGame();
+    else nextLevel();
+});
+
+initGrid();
+render();
+requestAnimationFrame(gameLoop);
+</script>
+</body>
+</html>

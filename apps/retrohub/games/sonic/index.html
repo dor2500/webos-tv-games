@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Ultimate Flash Sonic - LG webOS TV</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            margin: 0;
+            padding: 0;
+        }
+        html, body {
+            width: 100vw;
+            height: 100vh;
+            background-color: #000000;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+        #player-container {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 10;
+        }
+        ruffle-player {
+            width: 100% !important;
+            height: 100% !important;
+        }
+        #loading {
+            position: fixed;
+            z-index: 20;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            color: #ffffff;
+            transition: opacity 0.4s ease-out;
+        }
+        .sonic-ring-spinner {
+            width: 64px;
+            height: 64px;
+            border: 6px solid #ffd700;
+            border-top: 6px solid #0066ff;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            box-shadow: 0 0 15px #ffd700;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .loading-title {
+            font-size: 20px;
+            font-weight: 800;
+            letter-spacing: 2px;
+            text-shadow: 0 2px 8px rgba(0, 102, 255, 0.8);
+        }
+        .loading-sub {
+            font-size: 13px;
+            color: #99bbff;
+            letter-spacing: 1px;
+        }
+    </style>
+    <script src="ruffle.js"></script>
+</head>
+<body>
+    <div id="loading">
+        <div class="sonic-ring-spinner"></div>
+        <div class="loading-title">ULTIMATE FLASH SONIC</div>
+        <div class="loading-sub">טוען את המשחק לטלוויזיה...</div>
+    </div>
+
+    <div id="player-container"></div>
+
+    <script>
+    (function() {
+        'use strict';
+
+        var rufflePlayer = null;
+        var isLoaded = false;
+
+        function hideLoading() {
+            var loader = document.getElementById('loading');
+            if (loader) {
+                loader.style.opacity = '0';
+                setTimeout(function() {
+                    loader.style.display = 'none';
+                }, 400);
+            }
+        }
+
+        window.RufflePlayer = window.RufflePlayer || {};
+        window.RufflePlayer.config = {
+            letterbox: "on",
+            autoplay: "on",
+            unmuteOverlay: "hidden",
+            backgroundColor: "#000000",
+            quality: "high",
+            scale: "showAll",
+            forceScale: true,
+            wmode: "direct",
+            allowScriptAccess: true
+        };
+
+        window.addEventListener('DOMContentLoaded', function() {
+            var ruffle = window.RufflePlayer.newest();
+            rufflePlayer = ruffle.createPlayer();
+            var container = document.getElementById('player-container');
+            container.appendChild(rufflePlayer);
+
+            rufflePlayer.load({
+                url: 'sonic.swf',
+                autoplay: 'on',
+                backgroundColor: '#000000'
+            }).then(function() {
+                isLoaded = true;
+                setTimeout(hideLoading, 500);
+            }).catch(function(err) {
+                console.error('Error loading SWF:', err);
+                hideLoading();
+            });
+
+            // Focus player so keys are captured immediately
+            rufflePlayer.focus();
+        });
+
+        // -------------------------------------------------------------
+        // LG webOS Remote Control Integration
+        // -------------------------------------------------------------
+        function dispatchKeyToPlayer(type, code, key, keyCode) {
+            if (!rufflePlayer) return;
+            var evt = new KeyboardEvent(type, {
+                code: code,
+                key: key,
+                keyCode: keyCode,
+                which: keyCode,
+                bubbles: true,
+                cancelable: true
+            });
+            rufflePlayer.dispatchEvent(evt);
+            document.dispatchEvent(evt);
+        }
+
+        var keysDown = {};
+
+        function isChannelButton(e, kc) {
+            return kc === 33 || kc === 34 || // Channel Up / Channel Down
+                   e.key === 'ChannelUp' || e.key === 'ChannelDown' ||
+                   e.code === 'PageUp' || e.code === 'PageDown';
+        }
+
+        window.addEventListener('keydown', function(e) {
+            var kc = e.keyCode || e.which;
+
+            // Channel Up / Channel Down buttons -> Map to Space (Jump / Spin)
+            if (isChannelButton(e, kc)) {
+                if (!keysDown['channel_jump']) {
+                    keysDown['channel_jump'] = true;
+                    dispatchKeyToPlayer('keydown', 'Space', ' ', 32);
+                }
+                e.preventDefault();
+                return;
+            }
+
+            // LG TV Remote Back button (461) or Escape -> Map to Pause (P / Escape)
+            if (kc === 461 || kc === 27 || e.key === 'Escape') {
+                dispatchKeyToPlayer('keydown', 'KeyP', 'p', 80);
+                dispatchKeyToPlayer('keyup', 'KeyP', 'p', 80);
+                e.preventDefault();
+                return;
+            }
+
+            // All standard keys (Enter / OK, Arrows, Space) pass through 100% normally for menus!
+            if (rufflePlayer && document.activeElement !== rufflePlayer) {
+                rufflePlayer.focus();
+            }
+        });
+
+        window.addEventListener('keyup', function(e) {
+            var kc = e.keyCode || e.which;
+
+            // Release mapped Space on Channel button release
+            if (isChannelButton(e, kc)) {
+                keysDown['channel_jump'] = false;
+                dispatchKeyToPlayer('keyup', 'Space', ' ', 32);
+                e.preventDefault();
+                return;
+            }
+        });
+
+        // Click / touch audio unlocker
+        function unlockAudio() {
+            if (window.AudioContext || window.webkitAudioContext) {
+                var AudioCtx = window.AudioContext || window.webkitAudioContext;
+                if (window._audioCtx && window._audioCtx.state === 'suspended') {
+                    window._audioCtx.resume();
+                }
+            }
+            if (rufflePlayer) {
+                rufflePlayer.focus();
+            }
+        }
+
+        ['click', 'keydown', 'mousedown', 'pointerdown'].forEach(function(evt) {
+            window.addEventListener(evt, unlockAudio, { passive: true });
+        });
+
+        // webOS TV Lifecycle
+        document.addEventListener('webOSLaunch', function() {
+            unlockAudio();
+            if (rufflePlayer) rufflePlayer.focus();
+        });
+        document.addEventListener('webOSRelaunch', function() {
+            unlockAudio();
+            if (rufflePlayer) rufflePlayer.focus();
+        });
+        document.addEventListener('visibilitychange', function() {
+            if (!document.hidden) {
+                unlockAudio();
+                if (rufflePlayer) rufflePlayer.focus();
+            }
+        });
+    })();
+    </script>
+</body>
+</html>

@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1920, height=1080, initial-scale=1.0, user-scalable=no">
+    <title>דום קלאסי בעברית - LG webOS TV</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        body, html {
+            width: 1920px;
+            height: 1080px;
+            overflow: hidden;
+            background: #000000;
+            color: #ffffff;
+        }
+        #doom-screen {
+            position: relative;
+            width: 1920px;
+            height: 1080px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+        }
+        /* 3D Viewport */
+        #viewport-wrapper {
+            position: relative;
+            width: 1920px;
+            height: 920px;
+            background-color: #111111;
+            overflow: hidden;
+        }
+        canvas#viewport {
+            display: block;
+            width: 1920px;
+            height: 920px;
+        }
+        /* Muzzle Flash & Damage Overlay */
+        #damage-flash {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: red;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.1s ease;
+        }
+
+        /* Classic DOOM Status Bar (Hebrew Edition) */
+        #status-bar {
+            width: 1920px;
+            height: 160px;
+            background: linear-gradient(180deg, #374151 0%, #1f2937 50%, #111827 100%);
+            border-top: 4px solid #b91c1c;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            padding: 0 40px;
+            font-weight: 900;
+            text-shadow: 2px 2px 0px #000;
+        }
+        .stat-block {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-width: 180px;
+            background: #111827;
+            border: 3px solid #4b5563;
+            border-radius: 12px;
+            padding: 8px 16px;
+            box-shadow: inset 0 0 10px #000;
+        }
+        .stat-label {
+            font-size: 22px;
+            color: #ef4444;
+            letter-spacing: 1px;
+        }
+        .stat-val {
+            font-size: 48px;
+            color: #fbbf24;
+            line-height: 1;
+            font-family: 'Courier New', Courier, monospace;
+        }
+        /* Doomguy Face */
+        #doomguy-face {
+            width: 110px;
+            height: 130px;
+            background: #1e293b;
+            border: 3px solid #dc2626;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 60px;
+            box-shadow: 0 0 20px rgba(220, 38, 38, 0.5);
+        }
+        .weapon-tray {
+            display: flex;
+            gap: 12px;
+            background: #0f172a;
+            padding: 10px 20px;
+            border-radius: 10px;
+            border: 2px solid #334155;
+            font-size: 24px;
+        }
+        .w-num {
+            color: #64748b;
+        }
+        .w-num.active {
+            color: #facc15;
+            text-shadow: 0 0 8px #facc15;
+        }
+
+        /* Overlay */
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 1920px;
+            height: 1080px;
+            background: rgba(0, 0, 0, 0.92);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            backdrop-filter: blur(8px);
+        }
+        .overlay.hidden { display: none; }
+        .menu-card {
+            background: linear-gradient(135deg, #1c0505 0%, #0a0101 100%);
+            border: 4px solid #dc2626;
+            border-radius: 24px;
+            padding: 50px 80px;
+            text-align: center;
+            box-shadow: 0 0 60px rgba(220, 38, 38, 0.7);
+            max-width: 900px;
+        }
+        .menu-title {
+            font-size: 72px;
+            color: #dc2626;
+            text-shadow: 0 0 30px rgba(220, 38, 38, 0.9);
+            letter-spacing: 4px;
+            margin-bottom: 20px;
+        }
+        .menu-btn {
+            background: #2b0808;
+            color: #ffffff;
+            font-size: 32px;
+            font-weight: bold;
+            padding: 16px 40px;
+            border: 2px solid #ef4444;
+            border-radius: 16px;
+            cursor: pointer;
+            margin: 10px 0;
+            transition: all 0.2s ease;
+            outline: none;
+        }
+        .menu-btn:hover, .menu-btn:focus, .menu-btn.active {
+            background: #dc2626;
+            color: #000;
+            transform: scale(1.05);
+            box-shadow: 0 0 35px #dc2626;
+        }
+        .help-box {
+            margin-top: 30px;
+            padding: 20px;
+            background: rgba(30, 10, 10, 0.8);
+            border-radius: 12px;
+            font-size: 22px;
+            color: #fca5a5;
+            line-height: 1.8;
+            text-align: right;
+        }
+    </style>
+</head>
+<body>
+<div id="doom-screen">
+    <div id="viewport-wrapper">
+        <canvas id="viewport" width="960" height="460"></canvas>
+        <div id="damage-flash"></div>
+    </div>
+
+    <!-- Status Bar (Hebrew) -->
+    <div id="status-bar">
+        <div class="stat-block">
+            <span class="stat-label">תַּחְמוֹשֶׁת</span>
+            <span id="ammo-val" class="stat-val">50</span>
+        </div>
+        <div class="stat-block">
+            <span class="stat-label">בְּרִיאוּת</span>
+            <span id="health-val" class="stat-val" style="color: #4ade80;">100%</span>
+        </div>
+        <div id="doomguy-face">😐</div>
+        <div class="stat-block">
+            <span class="stat-label">שִׁרְיוֹן</span>
+            <span id="armor-val" class="stat-val">0%</span>
+        </div>
+        <div class="weapon-tray">
+            <span class="stat-label" style="margin-left: 10px;">נֶשֶׁק:</span>
+            <span class="w-num">1</span>
+            <span class="w-num active">2</span>
+            <span class="w-num active">3</span>
+            <span class="w-num">4</span>
+            <span class="w-num">5</span>
+            <span class="w-num">6</span>
+            <span class="w-num">7</span>
+        </div>
+    </div>
+
+    <!-- Menu Overlay -->
+    <div id="menu-overlay" class="overlay">
+        <div class="menu-card">
+            <h1 class="menu-title">DOOM דּוּם</h1>
+            <p style="font-size: 26px; color: #fca5a5; margin-bottom: 30px;">פרק 1: הַתַּחֲנָה בְּמַאדִים — מהדורת LG Smart TV בעברית</p>
+            <button id="btn-start" class="menu-btn active">מִשְׂחָק חָדָשׁ</button>
+            <div class="help-box">
+                <p>🎮 <b>חיצי שלט LG (D-Pad):</b> למעלה/למטה להליכה, ימינה/שמאלה לסיבוב מבט.</p>
+                <p>🔫 <b>כפתור אישור (OK / Center):</b> ירי בנשק / פתיחת דלתות / הפעלת מתגים.</p>
+                <p>🕹️ <b>שלטי גיימינג (Bluetooth / USB):</b> סטיק שמאל לתנועה, סטיק ימין למבט, הדק לירי, כפתור A לפתיחת דלתות.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// --- Web Audio SFX for DOOM ---
+class DoomSound {
+    constructor() { this.ctx = null; }
+    init() {
+        if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        if (this.ctx.state === 'suspended') this.ctx.resume();
+    }
+    shoot() {
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(140, now);
+        osc.frequency.exponentialRampToValueAtTime(30, now + 0.18);
+        gain.gain.setValueAtTime(0.3, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(now + 0.2);
+    }
+    demonRoar() {
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(80, now);
+        osc.frequency.exponentialRampToValueAtTime(40, now + 0.4);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(now + 0.4);
+    }
+    pain() {
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(120, now);
+        osc.frequency.exponentialRampToValueAtTime(60, now + 0.25);
+        gain.gain.setValueAtTime(0.25, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(now + 0.25);
+    }
+}
+const doomSfx = new DoomSound();
+
+// --- 3D Raycaster Engine for DOOM ---
+const canvas = document.getElementById('viewport');
+const ctx = canvas.getContext('2d');
+const W = canvas.width;
+const H = canvas.height;
+
+// Map (1 = Concrete Wall, 2 = Metal Wall, 3 = Tech Panel, 4 = Exit Door)
+const map = [
+    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+    [1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,1],
+    [1,0,3,0,3,0,1,0,2,2,0,2,2,0,0,1],
+    [1,0,0,0,0,0,0,0,2,0,0,0,2,0,0,1],
+    [1,0,3,0,3,0,1,0,0,0,0,0,0,0,0,1],
+    [1,0,0,0,0,0,1,0,2,0,0,0,2,0,0,1],
+    [1,1,1,0,1,1,1,0,2,2,4,2,2,0,0,1],
+    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+    [1,0,2,2,2,0,1,0,1,1,0,1,1,0,0,1],
+    [1,0,2,0,0,0,1,0,0,0,0,0,0,0,0,1],
+    [1,0,2,0,2,0,1,0,3,0,0,0,3,0,0,1],
+    [1,0,0,0,2,0,0,0,0,0,0,0,0,0,0,1],
+    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+];
+const MAP_W = 16;
+const MAP_H = 13;
+
+let player = {
+    x: 2.5,
+    y: 2.5,
+    angle: 0,
+    health: 100,
+    armor: 25,
+    ammo: 50,
+    gunFrame: 0,
+    isShooting: false
+};
+
+// Monsters (Imps & Demons)
+let monsters = [
+    { x: 7.5, y: 3.5, alive: true, health: 30, color: '#b91c1c' },
+    { x: 11.5, y: 4.5, alive: true, health: 40, color: '#ea580c' },
+    { x: 4.5, y: 8.5, alive: true, health: 30, color: '#b91c1c' },
+    { x: 12.5, y: 10.5, alive: true, health: 50, color: '#dc2626' }
+];
+
+let gameState = 'MENU';
+let keys = {};
+
+function castRay(rayAngle) {
+    let sin = Math.sin(rayAngle);
+    let cos = Math.cos(rayAngle);
+
+    let dist = 0;
+    const maxDist = 20;
+    const step = 0.04;
+
+    while (dist < maxDist) {
+        dist += step;
+        let testX = Math.floor(player.x + cos * dist);
+        let testY = Math.floor(player.y + sin * dist);
+
+        if (testX < 0 || testX >= MAP_W || testY < 0 || testY >= MAP_H) {
+            return { dist: maxDist, hit: 1 };
+        }
+        if (map[testY][testX] > 0) {
+            return { dist: dist, hit: map[testY][testX] };
+        }
+    }
+    return { dist: maxDist, hit: 0 };
+}
+
+function render3D() {
+    // 1. Sky & Floor
+    ctx.fillStyle = '#261208'; // Fiery Martian ceiling
+    ctx.fillRect(0, 0, W, H / 2);
+    ctx.fillStyle = '#1c1917'; // Concrete floor
+    ctx.fillRect(0, H / 2, W, H / 2);
+
+    // 2. Raycasting Walls
+    const fov = Math.PI / 3;
+    const halfFov = fov / 2;
+    const rays = 160;
+    const rayStep = fov / rays;
+    const wallSliceW = Math.ceil(W / rays);
+
+    const wallColors = {
+        1: '#64748b', // Concrete
+        2: '#475569', // Metal
+        3: '#0284c7', // Tech
+        4: '#e11d48'  // Door
+    };
+
+    let zBuffer = new Float32Array(rays);
+
+    for (let i = 0; i < rays; i++) {
+        const rayAngle = (player.angle - halfFov) + i * rayStep;
+        const res = castRay(rayAngle);
+
+        // Fish-eye correction
+        const correctedDist = res.dist * Math.cos(rayAngle - player.angle);
+        zBuffer[i] = correctedDist;
+
+        const wallH = Math.min(H, (H / correctedDist));
+        const wallY = (H - wallH) / 2;
+
+        let col = wallColors[res.hit] || '#475569';
+        // Shading with distance
+        ctx.fillStyle = col;
+        ctx.fillRect(i * wallSliceW, wallY, wallSliceW, wallH);
+
+        // Darken edges
+        ctx.fillStyle = `rgba(0, 0, 0, ${Math.min(0.85, correctedDist / 12)})`;
+        ctx.fillRect(i * wallSliceW, wallY, wallSliceW, wallH);
+    }
+
+    // 3. Render Monsters (Sprites)
+    monsters.forEach(m => {
+        if (!m.alive) return;
+        const dx = m.x - player.x;
+        const dy = m.y - player.y;
+
+        const spriteDist = Math.hypot(dx, dy);
+        let spriteAngle = Math.atan2(dy, dx) - player.angle;
+
+        while (spriteAngle < -Math.PI) spriteAngle += Math.PI * 2;
+        while (spriteAngle > Math.PI) spriteAngle -= Math.PI * 2;
+
+        if (Math.abs(spriteAngle) < halfFov + 0.2 && spriteDist > 0.5) {
+            const screenX = (W / 2) + Math.tan(spriteAngle) * (W / 2);
+            const spriteH = Math.min(H * 1.2, H / spriteDist);
+            const spriteY = (H - spriteH) / 2;
+
+            const rayIndex = Math.floor((screenX / W) * rays);
+            if (rayIndex >= 0 && rayIndex < rays && spriteDist < zBuffer[rayIndex]) {
+                // Draw Imp/Demon
+                ctx.save();
+                ctx.fillStyle = m.color;
+                ctx.shadowColor = m.color;
+                ctx.shadowBlur = 20;
+                // Torso & head
+                ctx.beginPath();
+                ctx.arc(screenX, spriteY + spriteH * 0.4, spriteH * 0.25, 0, Math.PI * 2);
+                ctx.fill();
+                // Glowing eyes
+                ctx.fillStyle = '#fef08a';
+                ctx.fillRect(screenX - spriteH * 0.08, spriteY + spriteH * 0.35, spriteH * 0.05, spriteH * 0.05);
+                ctx.fillRect(screenX + spriteH * 0.03, spriteY + spriteH * 0.35, spriteH * 0.05, spriteH * 0.05);
+                ctx.restore();
+            }
+        }
+    });
+
+    // 4. Draw Doom Shotgun Weapon in Center
+    ctx.save();
+    const gunX = W / 2;
+    const gunY = H;
+    const recoil = player.isShooting ? 30 : 0;
+
+    // Shotgun barrels
+    ctx.fillStyle = '#334155';
+    ctx.fillRect(gunX - 25, gunY - 140 + recoil, 50, 140);
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(gunX - 20, gunY - 150 + recoil, 18, 12);
+    ctx.fillRect(gunX + 2, gunY - 150 + recoil, 18, 12);
+
+    // Muzzle flash when shooting
+    if (player.isShooting) {
+        ctx.beginPath();
+        ctx.arc(gunX, gunY - 160, 45, 0, Math.PI * 2);
+        ctx.fillStyle = '#fef08a';
+        ctx.shadowColor = '#f59e0b';
+        ctx.shadowBlur = 40;
+        ctx.fill();
+    }
+    ctx.restore();
+}
+
+function shoot() {
+    if (player.ammo <= 0 || player.isShooting) return;
+    doomSfx.shoot();
+    player.isShooting = true;
+    player.ammo--;
+    document.getElementById('ammo-val').innerText = player.ammo;
+
+    // Check hitscan on nearest monster
+    monsters.forEach(m => {
+        if (!m.alive) return;
+        const dx = m.x - player.x;
+        const dy = m.y - player.y;
+        const angleToM = Math.atan2(dy, dx) - player.angle;
+        if (Math.abs(angleToM) < 0.25) {
+            m.health -= 35;
+            if (m.health <= 0) {
+                m.alive = false;
+                doomSfx.demonRoar();
+            }
+        }
+    });
+
+    setTimeout(() => { player.isShooting = false; }, 180);
+}
+
+function update() {
+    if (gameState !== 'PLAYING') return;
+
+    const moveSpeed = 0.05;
+    const rotSpeed = 0.04;
+
+    // Turn
+    if (keys[37]) player.angle -= rotSpeed; // Left arrow
+    if (keys[39]) player.angle += rotSpeed; // Right arrow
+
+    // Move Forward/Backward
+    let moveStep = 0;
+    if (keys[38]) moveStep = moveSpeed; // Up
+    if (keys[40]) moveStep = -moveSpeed; // Down
+
+    if (moveStep !== 0) {
+        let newX = player.x + Math.cos(player.angle) * moveStep;
+        let newY = player.y + Math.sin(player.angle) * moveStep;
+
+        if (map[Math.floor(player.y)][Math.floor(newX)] === 0) player.x = newX;
+        if (map[Math.floor(newY)][Math.floor(player.x)] === 0) player.y = newY;
+    }
+
+    // Doomguy face mood
+    const faceEl = document.getElementById('doomguy-face');
+    if (player.health > 70) faceEl.innerText = player.isShooting ? '😈' : '😎';
+    else if (player.health > 30) faceEl.innerText = '😟';
+    else faceEl.innerText = '💀';
+}
+
+function gameLoop() {
+    update();
+    render3D();
+    pollGamepad();
+    requestAnimationFrame(gameLoop);
+}
+
+window.addEventListener('keydown', (e) => {
+    doomSfx.init();
+    keys[e.keyCode] = true;
+
+    if (e.keyCode === 13) { // Enter / OK button
+        if (gameState === 'MENU') {
+            startGame();
+        } else {
+            shoot();
+        }
+    }
+});
+
+window.addEventListener('keyup', (e) => {
+    keys[e.keyCode] = false;
+});
+
+function pollGamepad() {
+    const gp = navigator.getGamepads ? navigator.getGamepads()[0] : null;
+    if (!gp) return;
+
+    if (gp.axes[0] < -0.4) player.angle -= 0.04;
+    else if (gp.axes[0] > 0.4) player.angle += 0.04;
+
+    if (gp.axes[1] < -0.4) {
+        let nx = player.x + Math.cos(player.angle) * 0.06;
+        let ny = player.y + Math.sin(player.angle) * 0.06;
+        if (map[Math.floor(player.y)][Math.floor(nx)] === 0) player.x = nx;
+        if (map[Math.floor(ny)][Math.floor(player.x)] === 0) player.y = ny;
+    }
+
+    if (gp.buttons[0]?.pressed || gp.buttons[7]?.pressed) {
+        if (gameState === 'MENU') startGame();
+        else shoot();
+    }
+}
+
+function startGame() {
+    doomSfx.init();
+    gameState = 'PLAYING';
+    document.getElementById('menu-overlay').classList.add('hidden');
+}
+
+document.getElementById('btn-start').addEventListener('click', startGame);
+
+requestAnimationFrame(gameLoop);
+</script>
+</body>
+</html>

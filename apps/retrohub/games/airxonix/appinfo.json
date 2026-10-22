@@ -1,0 +1,19 @@
+{
+  "id": "com.dor.airxonix",
+  "version": "1.0.0",
+  "vendor": "Retro Hub (Hebrew Edition)",
+  "type": "web",
+  "main": "index.html",
+  "title": "אייר-קסוניקס 3D בעברית",
+  "icon": "icon.png",
+  "largeIcon": "largeIcon.png",
+  "bgImage": "splash.png",
+  "splashBackground": "splash.png",
+  "resolution": "1920x1080",
+  "bgColor": "#030712",
+  "iconColor": "#06B6D4",
+  "supportGIP": false,
+  "requiredPermissions": [],
+  "handlesRelaunch": true,
+  "uiRevision": 2
+}

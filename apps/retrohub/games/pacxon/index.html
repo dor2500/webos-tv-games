@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1920, height=1080, initial-scale=1.0, user-scalable=no">
+    <title>פאק-סוניקס בעברית - LG webOS TV</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        body, html {
+            width: 1920px;
+            height: 1080px;
+            overflow: hidden;
+            background: radial-gradient(circle at center, #111827 0%, #030712 100%);
+            color: #ffffff;
+        }
+        #game-container {
+            position: relative;
+            width: 1920px;
+            height: 1080px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+        }
+        /* Top HUD Bar */
+        #hud {
+            width: 1800px;
+            height: 90px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 40px;
+            margin-top: 15px;
+            background: rgba(17, 24, 39, 0.85);
+            border: 2px solid #38bdf8;
+            border-radius: 20px;
+            box-shadow: 0 0 25px rgba(56, 189, 248, 0.3);
+            font-size: 28px;
+            font-weight: bold;
+        }
+        .hud-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .hud-label {
+            color: #94a3b8;
+            font-size: 22px;
+        }
+        .hud-value {
+            color: #facc15;
+            font-size: 32px;
+            text-shadow: 0 0 10px rgba(250, 204, 21, 0.5);
+        }
+        #progress-bar-container {
+            width: 320px;
+            height: 24px;
+            background: #1e293b;
+            border-radius: 12px;
+            border: 1px solid #475569;
+            overflow: hidden;
+            position: relative;
+        }
+        #progress-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #38bdf8, #22c55e);
+            border-radius: 12px;
+            transition: width 0.2s ease;
+        }
+        #target-marker {
+            position: absolute;
+            left: 80%;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background: #ef4444;
+            box-shadow: 0 0 6px #ef4444;
+        }
+
+        /* Canvas Arena */
+        #canvas-wrapper {
+            position: relative;
+            margin-top: 20px;
+            width: 1600px;
+            height: 900px;
+            border: 4px solid #1e40af;
+            border-radius: 16px;
+            box-shadow: 0 0 40px rgba(30, 64, 175, 0.6);
+            overflow: hidden;
+            background-color: #020617;
+        }
+        canvas {
+            display: block;
+            width: 1600px;
+            height: 900px;
+        }
+
+        /* Modals & Overlays */
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 1920px;
+            height: 1080px;
+            background: rgba(2, 6, 23, 0.92);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            backdrop-filter: blur(8px);
+        }
+        .overlay.hidden {
+            display: none;
+        }
+        .menu-card {
+            background: linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.95));
+            border: 3px solid #38bdf8;
+            border-radius: 28px;
+            padding: 50px 80px;
+            text-align: center;
+            box-shadow: 0 0 50px rgba(56, 189, 248, 0.4);
+            max-width: 900px;
+        }
+        .menu-title {
+            font-size: 64px;
+            color: #facc15;
+            text-shadow: 0 0 25px rgba(250, 204, 21, 0.6);
+            margin-bottom: 20px;
+        }
+        .menu-subtitle {
+            font-size: 26px;
+            color: #94a3b8;
+            margin-bottom: 40px;
+        }
+        .btn-list {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            width: 420px;
+            margin: 0 auto;
+        }
+        .menu-btn {
+            background: #1e293b;
+            color: #ffffff;
+            font-size: 30px;
+            font-weight: bold;
+            padding: 16px 32px;
+            border: 2px solid #475569;
+            border-radius: 16px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            outline: none;
+        }
+        .menu-btn:hover, .menu-btn:focus, .menu-btn.active {
+            background: #38bdf8;
+            color: #0f172a;
+            border-color: #ffffff;
+            transform: scale(1.05);
+            box-shadow: 0 0 30px rgba(56, 189, 248, 0.8);
+        }
+        .instructions-box {
+            margin-top: 30px;
+            padding: 20px;
+            background: rgba(15, 23, 42, 0.6);
+            border-radius: 14px;
+            font-size: 22px;
+            color: #cbd5e1;
+            line-height: 1.8;
+            text-align: right;
+        }
+        .tag-bonus {
+            display: inline-block;
+            background: #0369a1;
+            padding: 2px 10px;
+            border-radius: 8px;
+            margin: 2px;
+        }
+    </style>
+</head>
+<body>
+<div id="game-container">
+    <!-- Top HUD -->
+    <div id="hud">
+        <div class="hud-item">
+            <span class="hud-label">נִיקוּד:</span>
+            <span id="score-val" class="hud-value">0</span>
+        </div>
+        <div class="hud-item">
+            <span class="hud-label">שָׁלָב:</span>
+            <span id="level-val" class="hud-value">1</span>
+        </div>
+        <div class="hud-item">
+            <span class="hud-label">כִּיבּוּשׁ שֶׁטַח:</span>
+            <div id="progress-bar-container">
+                <div id="progress-fill"></div>
+                <div id="target-marker" title="יעד 80%"></div>
+            </div>
+            <span id="progress-text" class="hud-value" style="font-size: 26px; margin-right: 10px;">0% / 80%</span>
+        </div>
+        <div class="hud-item">
+            <span class="hud-label">חַיִּים:</span>
+            <span id="lives-val" class="hud-value">❤️❤️❤️</span>
+        </div>
+        <div class="hud-item">
+            <span class="hud-label">בונוס פעיל:</span>
+            <span id="buff-val" class="hud-value" style="color: #4ade80; font-size: 24px;">אין</span>
+        </div>
+    </div>
+
+    <!-- Canvas -->
+    <div id="canvas-wrapper">
+        <canvas id="gameCanvas" width="1600" height="900"></canvas>
+    </div>
+
+    <!-- Start / Pause Menu Overlay -->
+    <div id="menu-overlay" class="overlay">
+        <div class="menu-card">
+            <h1 class="menu-title">פאק-סוניקס בעברית</h1>
+            <p class="menu-subtitle">מהדורת טלוויזיה LG webOS Smart TV — כבוש 80% משטח הלוח והיזהר מהרוחות!</p>
+            <div class="btn-list">
+                <button id="btn-start" class="menu-btn active">הַתְחֵל מִשְׂחָק</button>
+                <button id="btn-howto" class="menu-btn">הוֹרָאוֹת וְשַׁלָּט</button>
+            </div>
+            <div id="instructions" class="instructions-box">
+                <p>🎮 <b>שליטה בשלט LG:</b> השתמש בחיצי השלט (D-Pad) כדי לכוון את פאקמן. לחץ אישור (OK) להשהיה.</p>
+                <p>🎯 <b>מטרה:</b> צא מגבולות המסגרת לחיתוך שטח. כשתחזור לקיר השטח ייסגר וייצבע. השלם 80% לניצחון!</p>
+                <p>⚠️ <b>זהירות:</b> אסור לרוחות לגעת בשובל שאתה משאיר אחריך בזמן שאתה חותך!</p>
+                <p>🎁 <b>בונוסים:</b> <span class="tag-bonus">🍌 בננה +500</span> <span class="tag-bonus">⏱️ שעון: הקפאת רוחות</span> <span class="tag-bonus">⚡ ברק: מהירות על</span> <span class="tag-bonus">💊 גלולה: טריפת רוחות</span></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Over / Level Clear Overlay -->
+    <div id="msg-overlay" class="overlay hidden">
+        <div class="menu-card">
+            <h1 id="msg-title" class="menu-title">ניצחון!</h1>
+            <p id="msg-sub" class="menu-subtitle">עברת לשלב הבא</p>
+            <div class="btn-list">
+                <button id="btn-continue" class="menu-btn active">הַמְשֵׁךְ</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// --- Web Audio Synthesizer ---
+class SoundFx {
+    constructor() {
+        this.ctx = null;
+    }
+    init() {
+        if (!this.ctx) {
+            this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (this.ctx.state === 'suspended') {
+            this.ctx.resume();
+        }
+    }
+    playTone(freq, type, duration, vol=0.1) {
+        if (!this.ctx) return;
+        try {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+            gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start();
+            osc.stop(this.ctx.currentTime + duration);
+        } catch(e) {}
+    }
+    step() { this.playTone(240, 'triangle', 0.05, 0.05); }
+    fill() {
+        this.playTone(330, 'sine', 0.1, 0.1);
+        setTimeout(() => this.playTone(440, 'sine', 0.12, 0.1), 80);
+        setTimeout(() => this.playTone(587, 'sine', 0.2, 0.12), 160);
+    }
+    hit() {
+        this.playTone(150, 'sawtooth', 0.3, 0.2);
+        setTimeout(() => this.playTone(90, 'square', 0.4, 0.25), 100);
+    }
+    bonus() {
+        this.playTone(523, 'sine', 0.08, 0.15);
+        setTimeout(() => this.playTone(659, 'sine', 0.08, 0.15), 90);
+        setTimeout(() => this.playTone(784, 'sine', 0.15, 0.18), 180);
+    }
+    win() {
+        [440, 554, 659, 880].forEach((f, i) => {
+            setTimeout(() => this.playTone(f, 'sine', 0.25, 0.18), i * 140);
+        });
+    }
+}
+const sfx = new SoundFx();
+
+// --- Game Logic Constants ---
+const COLS = 80;
+const ROWS = 45;
+const TILE_SIZE = 20; // 80 * 20 = 1600, 45 * 20 = 900
+const CANVAS_W = 1600;
+const CANVAS_H = 900;
+
+const TILE_EMPTY = 0;
+const TILE_FILLED = 1;
+const TILE_TRAIL = 2;
+
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+let grid = [];
+let score = 0;
+let level = 1;
+let lives = 3;
+let gameState = 'MENU'; // MENU, PLAYING, LEVEL_CLEAR, GAMEOVER, PAUSED
+
+let player = {
+    x: 0,
+    y: 0,
+    dx: 0,
+    dy: 0,
+    nextDx: 0,
+    nextDy: 0,
+    speed: 1, // steps per tick
+    drawing: false,
+    mouthAngle: 0.2,
+    mouthDir: 1
+};
+
+let ghosts = [];
+let bonuses = [];
+let trailPoints = [];
+let totalPlayableTiles = 0;
+let filledTilesCount = 0;
+
+let buff = {
+    type: null,
+    timer: 0
+};
+
+// Initialize Grid
+function initGrid() {
+    grid = [];
+    filledTilesCount = 0;
+    totalPlayableTiles = COLS * ROWS;
+    for (let y = 0; y < ROWS; y++) {
+        grid[y] = [];
+        for (let x = 0; x < COLS; x++) {
+            // Borders start as filled
+            if (x === 0 || x === COLS - 1 || y === 0 || y === ROWS - 1) {
+                grid[y][x] = TILE_FILLED;
+                filledTilesCount++;
+            } else {
+                grid[y][x] = TILE_EMPTY;
+            }
+        }
+    }
+}
+
+// Reset Player to Top Left Safe Corner
+function resetPlayer() {
+    player.x = 0;
+    player.y = 0;
+    player.dx = 0;
+    player.dy = 0;
+    player.nextDx = 0;
+    player.nextDy = 0;
+    player.drawing = false;
+    trailPoints = [];
+}
+
+// Spawn Ghosts based on current Level
+function spawnGhosts() {
+    ghosts = [];
+    const count = Math.min(2 + level, 9);
+    const colors = ['#ef4444', '#f472b6', '#38bdf8', '#fb923c', '#a855f7'];
+    for (let i = 0; i < count; i++) {
+        let gx, gy;
+        do {
+            gx = Math.floor(Math.random() * (COLS - 6)) + 3;
+            gy = Math.floor(Math.random() * (ROWS - 6)) + 3;
+        } while (grid[gy] && grid[gy][gx] !== TILE_EMPTY);
+
+        const speed = (0.22 + level * 0.02) * (i % 2 === 0 ? 1 : 1.2);
+        const angle = Math.random() * Math.PI * 2;
+        ghosts.push({
+            x: gx * TILE_SIZE + TILE_SIZE / 2,
+            y: gy * TILE_SIZE + TILE_SIZE / 2,
+            vx: Math.cos(angle) * speed * TILE_SIZE,
+            vy: Math.sin(angle) * speed * TILE_SIZE,
+            color: colors[i % colors.length],
+            radius: TILE_SIZE * 0.45,
+            isFrozen: false
+        });
+    }
+}
+
+// Spawn Bonuses occasionally
+function maybeSpawnBonus() {
+    if (Math.random() < 0.008 && bonuses.length < 3) {
+        let bx, by;
+        do {
+            bx = Math.floor(Math.random() * (COLS - 4)) + 2;
+            by = Math.floor(Math.random() * (ROWS - 4)) + 2;
+        } while (grid[by] && grid[by][bx] !== TILE_EMPTY);
+
+        const types = ['BANANA', 'CHERRY', 'FREEZE', 'SPEED', 'PILL'];
+        const chosen = types[Math.floor(Math.random() * types.length)];
+        bonuses.push({
+            x: bx,
+            y: by,
+            type: chosen,
+            ttl: 400 // frames before expiring
+        });
+    }
+}
+
+// Flood Fill algorithm to close area
+function closeTrailAndFill() {
+    sfx.fill();
+    // 1. Mark trail as filled
+    trailPoints.forEach(p => {
+        grid[p.y][p.x] = TILE_FILLED;
+    });
+    trailPoints = [];
+    player.drawing = false;
+
+    // 2. Perform 4-way flood fill from all ghost positions to find empty non-captured regions
+    let visited = Array.from({ length: ROWS }, () => new Uint8Array(COLS));
+
+    ghosts.forEach(g => {
+        const gx = Math.floor(g.x / TILE_SIZE);
+        const gy = Math.floor(g.y / TILE_SIZE);
+        if (gx >= 0 && gx < COLS && gy >= 0 && gy < ROWS && grid[gy][gx] === TILE_EMPTY && !visited[gy][gx]) {
+            floodMark(gx, gy, visited);
+        }
+    });
+
+    // 3. Any TILE_EMPTY that was NOT reached by any ghost gets FILLED!
+    let newlyFilled = 0;
+    for (let y = 0; y < ROWS; y++) {
+        for (let x = 0; x < COLS; x++) {
+            if (grid[y][x] === TILE_EMPTY && !visited[y][x]) {
+                grid[y][x] = TILE_FILLED;
+                newlyFilled++;
+            }
+        }
+    }
+
+    score += newlyFilled * 20 * level;
+    updateHUD();
+
+    // Check if target reached (80%)
+    checkWinCondition();
+}
+
+function floodMark(startX, startY, visited) {
+    const queue = [[startX, startY]];
+    visited[startY][startX] = 1;
+    while (queue.length > 0) {
+        const [x, y] = queue.pop();
+        const neighbors = [
+            [x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]
+        ];
+        for (let i = 0; i < neighbors.length; i++) {
+            const [nx, ny] = neighbors[i];
+            if (nx >= 0 && nx < COLS && ny >= 0 && ny < ROWS) {
+                if (grid[ny][nx] === TILE_EMPTY && !visited[ny][nx]) {
+                    visited[ny][nx] = 1;
+                    queue.push([nx, ny]);
+                }
+            }
+        }
+    }
+}
+
+function checkWinCondition() {
+    let filled = 0;
+    for (let y = 0; y < ROWS; y++) {
+        for (let x = 0; x < COLS; x++) {
+            if (grid[y][x] === TILE_FILLED) filled++;
+        }
+    }
+    filledTilesCount = filled;
+    const percent = Math.floor((filledTilesCount / totalPlayableTiles) * 100);
+
+    if (percent >= 80) {
+        gameState = 'LEVEL_CLEAR';
+        sfx.win();
+        document.getElementById('msg-title').innerText = `ניצחון! עברת את שלב ${level}!`;
+        document.getElementById('msg-sub').innerText = `כבשת ${percent}% מהלוח! ניקוד: ${score}`;
+        document.getElementById('msg-overlay').classList.remove('hidden');
+    }
+}
+
+function playerDeath() {
+    sfx.hit();
+    lives--;
+    updateHUD();
+    // Erase trail
+    trailPoints.forEach(p => {
+        grid[p.y][p.x] = TILE_EMPTY;
+    });
+    trailPoints = [];
+    player.drawing = false;
+
+    if (lives <= 0) {
+        gameState = 'GAMEOVER';
+        document.getElementById('msg-title').innerText = 'המשחק הסתיים!';
+        document.getElementById('msg-sub').innerText = `ניקוד סופי: ${score} (הגעת לשלב ${level})`;
+        document.getElementById('msg-overlay').classList.remove('hidden');
+    } else {
+        resetPlayer();
+    }
+}
+
+function updateHUD() {
+    document.getElementById('score-val').innerText = score;
+    document.getElementById('level-val').innerText = level;
+    let hearts = '';
+    for (let i = 0; i < lives; i++) hearts += '❤️';
+    document.getElementById('lives-val').innerText = hearts || '💀';
+
+    const percent = Math.min(100, Math.floor((filledTilesCount / totalPlayableTiles) * 100));
+    document.getElementById('progress-fill').style.width = `${percent}%`;
+    document.getElementById('progress-text').innerText = `${percent}% / 80%`;
+
+    if (buff.type && buff.timer > 0) {
+        const names = { FREEZE: '⏱️ הקפאה', SPEED: '⚡ מהירות על', PILL: '💊 רוחות פגיעות' };
+        document.getElementById('buff-val').innerText = `${names[buff.type]} (${Math.ceil(buff.timer / 60)}s)`;
+    } else {
+        document.getElementById('buff-val').innerText = 'אין';
+    }
+}
+
+// Game Update Loop
+function update() {
+    if (gameState !== 'PLAYING') return;
+
+    // Handle Buff timers
+    if (buff.timer > 0) {
+        buff.timer--;
+        if (buff.timer <= 0) {
+            buff.type = null;
+        }
+    }
+    updateHUD();
+
+    // Player Direction logic
+    if (player.nextDx !== 0 || player.nextDy !== 0) {
+        // Can turn if changing perpendicular or into valid tile
+        player.dx = player.nextDx;
+        player.dy = player.nextDy;
+    }
+
+    const moveSpeed = buff.type === 'SPEED' ? 2 : 1;
+    for (let s = 0; s < moveSpeed; s++) {
+        if (player.dx !== 0 || player.dy !== 0) {
+            const nx = player.x + player.dx;
+            const ny = player.y + player.dy;
+
+            if (nx >= 0 && nx < COLS && ny >= 0 && ny < ROWS) {
+                const targetTile = grid[ny][nx];
+
+                if (targetTile === TILE_TRAIL) {
+                    // Cannot cross own trail
+                    playerDeath();
+                    return;
+                }
+
+                player.x = nx;
+                player.y = ny;
+
+                if (targetTile === TILE_EMPTY) {
+                    // Start or continue trail
+                    player.drawing = true;
+                    grid[ny][nx] = TILE_TRAIL;
+                    trailPoints.push({ x: nx, y: ny });
+                    if (s === 0) sfx.step();
+                } else if (targetTile === TILE_FILLED) {
+                    if (player.drawing) {
+                        // Returned to solid territory -> complete fill!
+                        closeTrailAndFill();
+                    }
+                }
+            }
+        }
+    }
+
+    // Check bonuses pickup
+    for (let i = bonuses.length - 1; i >= 0; i--) {
+        const b = bonuses[i];
+        b.ttl--;
+        if (b.ttl <= 0) {
+            bonuses.splice(i, 1);
+            continue;
+        }
+        if (b.x === player.x && b.y === player.y) {
+            sfx.bonus();
+            if (b.type === 'BANANA') score += 500;
+            else if (b.type === 'CHERRY') score += 1000;
+            else if (b.type === 'FREEZE') { buff.type = 'FREEZE'; buff.timer = 300; }
+            else if (b.type === 'SPEED') { buff.type = 'SPEED'; buff.timer = 400; }
+            else if (b.type === 'PILL') { buff.type = 'PILL'; buff.timer = 400; }
+            bonuses.splice(i, 1);
+        }
+    }
+    maybeSpawnBonus();
+
+    // Ghosts Movement & Collision
+    const isFrozen = buff.type === 'FREEZE';
+    const isPill = buff.type === 'PILL';
+
+    ghosts.forEach(g => {
+        if (isFrozen) return;
+
+        g.x += g.vx;
+        g.y += g.vy;
+
+        // Tile based collision & bounce
+        const gx = Math.floor(g.x / TILE_SIZE);
+        const gy = Math.floor(g.y / TILE_SIZE);
+
+        // Check if hitting filled wall or boundaries
+        if (gx <= 0 || gx >= COLS - 1 || gy <= 0 || gy >= ROWS - 1 || (grid[gy] && grid[gy][gx] === TILE_FILLED)) {
+            // Bounce
+            g.vx = -g.vx;
+            g.vy = -g.vy;
+            g.x += g.vx * 1.5;
+            g.y += g.vy * 1.5;
+        }
+
+        // Check if ghost touches player's TRAIL -> Instant Death
+        if (grid[gy] && grid[gy][gx] === TILE_TRAIL) {
+            playerDeath();
+            return;
+        }
+
+        // Check distance to player
+        const dist = Math.hypot(g.x - (player.x * TILE_SIZE + TILE_SIZE / 2), g.y - (player.y * TILE_SIZE + TILE_SIZE / 2));
+        if (dist < TILE_SIZE * 0.8) {
+            if (isPill) {
+                // Pacman eats the ghost!
+                sfx.bonus();
+                score += 800;
+                // Respawn ghost in center
+                g.x = (COLS / 2) * TILE_SIZE;
+                g.y = (ROWS / 2) * TILE_SIZE;
+            } else if (player.drawing) {
+                playerDeath();
+                return;
+            }
+        }
+    });
+}
+
+// Render Loop
+function render() {
+    ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
+
+    // 1. Draw Grid Tiles
+    for (let y = 0; y < ROWS; y++) {
+        for (let x = 0; x < COLS; x++) {
+            const tile = grid[y][x];
+            if (tile === TILE_FILLED) {
+                ctx.fillStyle = '#0284c7';
+                ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                ctx.strokeStyle = '#38bdf8';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+            } else if (tile === TILE_TRAIL) {
+                ctx.fillStyle = '#f59e0b';
+                ctx.fillRect(x * TILE_SIZE + 2, y * TILE_SIZE + 2, TILE_SIZE - 4, TILE_SIZE - 4);
+            }
+        }
+    }
+
+    // 2. Draw Bonuses
+    bonuses.forEach(b => {
+        ctx.save();
+        ctx.font = '18px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        const icons = { BANANA: '🍌', CHERRY: '🍒', FREEZE: '⏱️', SPEED: '⚡', PILL: '💊' };
+        ctx.fillText(icons[b.type] || '⭐', b.x * TILE_SIZE + TILE_SIZE / 2, b.y * TILE_SIZE + TILE_SIZE / 2);
+        ctx.restore();
+    });
+
+    // 3. Draw Ghosts
+    ghosts.forEach(g => {
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(g.x, g.y, g.radius, 0, Math.PI * 2);
+        ctx.fillStyle = buff.type === 'PILL' ? '#3b82f6' : (buff.type === 'FREEZE' ? '#93c5fd' : g.color);
+        ctx.shadowColor = ctx.fillStyle;
+        ctx.shadowBlur = 12;
+        ctx.fill();
+
+        // Eyes
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(g.x - 4, g.y - 2, 3, 0, Math.PI * 2);
+        ctx.arc(g.x + 4, g.y - 2, 3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#000000';
+        ctx.beginPath();
+        ctx.arc(g.x - 3, g.y - 2, 1.5, 0, Math.PI * 2);
+        ctx.arc(g.x + 5, g.y - 2, 1.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    });
+
+    // 4. Draw Pacman Player
+    ctx.save();
+    const px = player.x * TILE_SIZE + TILE_SIZE / 2;
+    const py = player.y * TILE_SIZE + TILE_SIZE / 2;
+    ctx.translate(px, py);
+
+    let rot = 0;
+    if (player.dx === 1) rot = 0;
+    else if (player.dx === -1) rot = Math.PI;
+    else if (player.dy === 1) rot = Math.PI / 2;
+    else if (player.dy === -1) rot = -Math.PI / 2;
+    ctx.rotate(rot);
+
+    player.mouthAngle += 0.04 * player.mouthDir;
+    if (player.mouthAngle > 0.35 || player.mouthAngle < 0.05) player.mouthDir = -player.mouthDir;
+
+    ctx.beginPath();
+    ctx.arc(0, 0, TILE_SIZE * 0.6, player.mouthAngle * Math.PI, (2 - player.mouthAngle) * Math.PI);
+    ctx.lineTo(0, 0);
+    ctx.fillStyle = '#facc15';
+    ctx.shadowColor = '#facc15';
+    ctx.shadowBlur = 15;
+    ctx.fill();
+    ctx.restore();
+}
+
+function gameLoop() {
+    update();
+    render();
+    pollGamepad();
+    requestAnimationFrame(gameLoop);
+}
+
+// Controller & Remote Inputs
+window.addEventListener('keydown', (e) => {
+    sfx.init();
+
+    // webOS Remote Keycodes:
+    // Left: 37, Up: 38, Right: 39, Down: 40, OK: 13, Back: 461, Exit: 1001
+    switch (e.keyCode) {
+        case 37: // Left
+            player.nextDx = -1; player.nextDy = 0;
+            break;
+        case 38: // Up
+            player.nextDx = 0; player.nextDy = -1;
+            break;
+        case 39: // Right
+            player.nextDx = 1; player.nextDy = 0;
+            break;
+        case 40: // Down
+            player.nextDx = 0; player.nextDy = 1;
+            break;
+        case 13: // Enter / OK
+            if (gameState === 'MENU') {
+                startGame();
+            } else if (gameState === 'LEVEL_CLEAR') {
+                nextLevel();
+            } else if (gameState === 'GAMEOVER') {
+                restartGame();
+            }
+            break;
+        case 461: // webOS Back button
+        case 27:  // Esc
+            if (gameState === 'PLAYING') {
+                gameState = 'MENU';
+                document.getElementById('menu-overlay').classList.remove('hidden');
+            }
+            break;
+    }
+});
+
+function pollGamepad() {
+    const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+    if (!gamepads || !gamepads[0]) return;
+    const gp = gamepads[0];
+
+    const thresh = 0.5;
+    if (gp.axes[0] < -thresh || gp.buttons[14]?.pressed) { player.nextDx = -1; player.nextDy = 0; }
+    else if (gp.axes[0] > thresh || gp.buttons[15]?.pressed) { player.nextDx = 1; player.nextDy = 0; }
+    else if (gp.axes[1] < -thresh || gp.buttons[12]?.pressed) { player.nextDx = 0; player.nextDy = -1; }
+    else if (gp.axes[1] > thresh || gp.buttons[13]?.pressed) { player.nextDx = 0; player.nextDy = 1; }
+
+    if (gp.buttons[0]?.pressed) { // Button A
+        if (gameState === 'MENU') startGame();
+        else if (gameState === 'LEVEL_CLEAR') nextLevel();
+        else if (gameState === 'GAMEOVER') restartGame();
+    }
+}
+
+function startGame() {
+    sfx.init();
+    gameState = 'PLAYING';
+    document.getElementById('menu-overlay').classList.add('hidden');
+    document.getElementById('msg-overlay').classList.add('hidden');
+    initGrid();
+    resetPlayer();
+    spawnGhosts();
+    updateHUD();
+}
+
+function nextLevel() {
+    level++;
+    lives = Math.min(lives + 1, 5);
+    startGame();
+}
+
+function restartGame() {
+    score = 0;
+    level = 1;
+    lives = 3;
+    startGame();
+}
+
+document.getElementById('btn-start').addEventListener('click', startGame);
+document.getElementById('btn-continue').addEventListener('click', () => {
+    if (gameState === 'GAMEOVER') restartGame();
+    else nextLevel();
+});
+
+// Auto start loop
+initGrid();
+render();
+requestAnimationFrame(gameLoop);
+</script>
+</body>
+</html>

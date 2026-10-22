@@ -1,0 +1,19 @@
+{
+  "id": "com.dor.pacxon",
+  "version": "1.0.0",
+  "vendor": "Retro Hub (Hebrew Edition)",
+  "type": "web",
+  "main": "index.html",
+  "title": "פאק-סוניקס בעברית",
+  "icon": "icon.png",
+  "largeIcon": "largeIcon.png",
+  "bgImage": "splash.png",
+  "splashBackground": "splash.png",
+  "resolution": "1920x1080",
+  "bgColor": "#0b0f19",
+  "iconColor": "#FFCC00",
+  "supportGIP": false,
+  "requiredPermissions": [],
+  "handlesRelaunch": true,
+  "uiRevision": 2
+}
