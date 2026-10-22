@@ -20,9 +20,9 @@
 
 | אייקון | שם המשחק | מזהה חבילה (App ID) | גרסה | תמיכה בשלטים | גודל קובץ | הורדה ישירה |
 | :---: | :--- | :--- | :---: | :---: | :---: | :---: |
-| <img src="assets/icons/angrybirds-icon.png" width="48"> | **Angry Birds** | `com.rovio.angrybirds` | 4.0.0 | סמן Magic Remote (פוינטר) | ~1.9 MB | [הורד IPK](packages/com.rovio.angrybirds_4.0.0_all.ipk) |
-| <img src="assets/icons/sonic-icon.png" width="48"> | **Ultimate Flash Sonic** (בעברית) | `com.sega.ultimateflashsonic` | 1.0.1 | חיצי שלט / גיימפאד | ~24.5 MB | [הורד IPK](packages/com.sega.ultimateflashsonic_1.0.1_all.ipk) |
-| <img src="assets/icons/icytower-icon.png" width="48"> | **Icy Tower - מהדורת מריו** | `com.freelunchdesign.icytower` | 1.3.1 | חיצים + מקש אישור / גיימפאד | ~3.0 MB | [הורד IPK](packages/com.freelunchdesign.icytower_1.3.1_all.ipk) |
+| <img src="assets/icons/angrybirds-icon.png" width="48"> | **Angry Birds** | `com.rovio.angrybirds` | 4.0.0 | סמן Magic Remote (פוינטר) | ~1.9 MB | [הורד קובץ IPK](https://github.com/dor2500/webos-tv-games/releases/download/v1.0.0/com.rovio.angrybirds_4.0.0_all.ipk) |
+| <img src="assets/icons/sonic-icon.png" width="48"> | **Ultimate Flash Sonic** (בעברית) | `com.sega.ultimateflashsonic` | 1.0.1 | חיצי שלט / גיימפאד | ~24.5 MB | [הורד קובץ IPK](https://github.com/dor2500/webos-tv-games/releases/download/v1.0.0/com.sega.ultimateflashsonic_1.0.1_all.ipk) |
+| <img src="assets/icons/icytower-icon.png" width="48"> | **Icy Tower - מהדורת מריו** | `com.freelunchdesign.icytower` | 1.3.1 | חיצים + מקש אישור / גיימפאד | ~3.0 MB | [הורד קובץ IPK](https://github.com/dor2500/webos-tv-games/releases/download/v1.0.0/com.freelunchdesign.icytower_1.3.1_all.ipk) |
 
 ---
 
