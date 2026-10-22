@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1920, height=1080, initial-scale=1.0, user-scalable=no">
+    <title>דייב המסוכן בעברית - LG webOS TV</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        body, html {
+            width: 1920px;
+            height: 1080px;
+            overflow: hidden;
+            background: #000000;
+            color: #ffffff;
+        }
+        #game-container {
+            position: relative;
+            width: 1920px;
+            height: 1080px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        /* HUD */
+        #hud {
+            width: 1720px;
+            height: 90px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 40px;
+            margin-top: 20px;
+            background: #111827;
+            border: 3px solid #f59e0b;
+            border-radius: 18px;
+            box-shadow: 0 0 30px rgba(245, 158, 11, 0.4);
+            font-size: 26px;
+            font-weight: bold;
+        }
+        .hud-val {
+            color: #facc15;
+            font-size: 32px;
+            text-shadow: 0 0 10px rgba(250, 204, 21, 0.6);
+            margin-right: 8px;
+        }
+        /* Canvas */
+        #canvas-wrapper {
+            position: relative;
+            margin-top: 20px;
+            width: 1600px;
+            height: 880px;
+            border: 4px solid #3b82f6;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 0 50px rgba(59, 130, 246, 0.5);
+            background: #020617;
+        }
+        canvas {
+            display: block;
+            width: 1600px;
+            height: 880px;
+            image-rendering: pixelated;
+        }
+        /* Overlays */
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 1920px;
+            height: 1080px;
+            background: rgba(0, 0, 0, 0.92);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            backdrop-filter: blur(8px);
+        }
+        .overlay.hidden { display: none; }
+        .menu-card {
+            background: linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%);
+            border: 4px solid #f59e0b;
+            border-radius: 24px;
+            padding: 50px 80px;
+            text-align: center;
+            box-shadow: 0 0 60px rgba(245, 158, 11, 0.6);
+            max-width: 900px;
+        }
+        .menu-title {
+            font-size: 68px;
+            color: #f59e0b;
+            text-shadow: 0 0 25px rgba(245, 158, 11, 0.8);
+            margin-bottom: 20px;
+        }
+        .menu-btn {
+            background: #1e293b;
+            color: #ffffff;
+            font-size: 32px;
+            font-weight: bold;
+            padding: 16px 48px;
+            border: 2px solid #f59e0b;
+            border-radius: 16px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            outline: none;
+        }
+        .menu-btn:hover, .menu-btn:focus, .menu-btn.active {
+            background: #f59e0b;
+            color: #000;
+            transform: scale(1.06);
+            box-shadow: 0 0 35px #f59e0b;
+        }
+        .hint-box {
+            margin-top: 30px;
+            padding: 20px;
+            background: rgba(15, 23, 42, 0.7);
+            border-radius: 14px;
+            font-size: 22px;
+            color: #cbd5e1;
+            line-height: 1.8;
+            text-align: right;
+        }
+    </style>
+</head>
+<body>
+<div id="game-container">
+    <div id="hud">
+        <div><span>נִיקוּד: </span><span id="score-val" class="hud-val">000000</span></div>
+        <div><span>שָׁלָב: </span><span id="level-val" class="hud-val">1</span></div>
+        <div><span>דַּרְכּוֹן גֶ'טְפָּאק: </span><span id="jet-val" class="hud-val" style="color: #38bdf8;">0</span></div>
+        <div><span>אֶקְדָּח: </span><span id="gun-val" class="hud-val" style="color: #4ade80;">ללא</span></div>
+        <div><span>גָּבִיעַ: </span><span id="trophy-val" class="hud-val" style="color: #f43f5e;">טרם נמצא</span></div>
+        <div><span>דַּיְיבִים: </span><span id="lives-val" class="hud-val">🧢🧢🧢</span></div>
+    </div>
+
+    <div id="canvas-wrapper">
+        <canvas id="daveCanvas" width="800" height="440"></canvas>
+    </div>
+
+    <div id="menu-overlay" class="overlay">
+        <div class="menu-card">
+            <h1 class="menu-title">דייב המסוכן בעברית</h1>
+            <p style="font-size: 26px; color: #cbd5e1; margin-bottom: 30px;">משחק ה-DOS הנוסטלגי האגדי של ג'ון רומרו מ-1988 — מהדורת LG Smart TV</p>
+            <button id="btn-start" class="menu-btn active">הַתְחֵל מִשְׂחָק</button>
+            <div class="hint-box">
+                <p>🎮 <b>שליטה בשלט LG:</b> חיצי ימינה/שמאלה לריצה • חץ למעלה / כפתור אישור (OK) לקפיצה.</p>
+                <p>🏆 <b>מטרה:</b> אסוף את הגביע המוזהב, יהלומים ואבני אודם, וגש אל דלת היציאה כדי לעבור שלב!</p>
+                <p>🚀 <b>ג'טפאק ואקדח:</b> אסוף ג'טפאק כדי לעוף בחופשיות. לחץ כפתור אישור (OK) לשיגור אש כשיש לך נשק!</p>
+                <p>⚠️ <b>זהירות:</b> הימנע מלבה, מים ומפלצות קטלניות.</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="msg-overlay" class="overlay hidden">
+        <div class="menu-card">
+            <h1 id="msg-title" class="menu-title">שלב הושלם!</h1>
+            <p id="msg-sub" style="font-size: 26px; color: #cbd5e1; margin-bottom: 30px;">עברת לשלב הבא</p>
+            <button id="btn-continue" class="menu-btn active">הַמְשֵׁךְ</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// Web Audio Synth
+class DaveAudio {
+    constructor() { this.ctx = null; }
+    init() {
+        if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        if (this.ctx.state === 'suspended') this.ctx.resume();
+    }
+    tone(freq, type, dur, vol=0.1) {
+        if (!this.ctx) return;
+        try {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+            gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + dur);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start();
+            osc.stop(this.ctx.currentTime + dur);
+        } catch(e) {}
+    }
+    jump() { this.tone(300, 'square', 0.08, 0.08); }
+    gem() { this.tone(600, 'sine', 0.06, 0.12); setTimeout(() => this.tone(900, 'sine', 0.08, 0.12), 60); }
+    trophy() {
+        [440, 554, 659, 880].forEach((f, i) => setTimeout(() => this.tone(f, 'square', 0.15, 0.15), i * 100));
+    }
+    shoot() { this.tone(180, 'sawtooth', 0.1, 0.2); }
+    die() {
+        this.tone(150, 'sawtooth', 0.3, 0.25);
+        setTimeout(() => this.tone(75, 'sawtooth', 0.4, 0.25), 100);
+    }
+}
+const sfx = new DaveAudio();
+
+const canvas = document.getElementById('daveCanvas');
+const ctx = canvas.getContext('2d');
+
+const TILE_W = 40;
+const TILE_H = 40;
+const COLS = 20;
+const ROWS = 11;
+
+// Tile types: 0=air, 1=brick, 2=door, 3=trophy, 4=gem, 5=jetpack, 6=gun, 7=fire/hazard
+const level1 = [
+    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+    [1,0,3,0,0,0,4,4,4,0,0,4,4,4,0,0,5,0,0,1],
+    [1,1,1,1,0,0,1,1,1,0,0,1,1,1,0,0,1,1,1,1],
+    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+    [1,0,0,0,1,1,1,0,0,0,0,0,0,1,1,1,0,0,0,1],
+    [1,0,4,0,0,0,0,0,6,0,0,0,0,0,0,0,0,4,0,1],
+    [1,1,1,0,0,0,0,1,1,1,1,1,0,0,0,0,1,1,1,1],
+    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,1],
+    [1,0,0,0,0,7,7,0,0,0,0,0,7,7,0,0,0,0,0,1],
+    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+];
+
+let map = JSON.parse(JSON.stringify(level1));
+let score = 0;
+let level = 1;
+let lives = 3;
+let gameState = 'MENU';
+
+let player = {
+    x: 2 * TILE_W,
+    y: 8 * TILE_H,
+    w: 26,
+    h: 36,
+    vx: 0,
+    vy: 0,
+    grounded: false,
+    hasTrophy: false,
+    jetpackFuel: 0,
+    hasGun: false,
+    facing: 1
+};
+
+let bullets = [];
+
+function resetLevel() {
+    map = JSON.parse(JSON.stringify(level1));
+    player.x = 2 * TILE_W;
+    player.y = 8 * TILE_H;
+    player.vx = 0;
+    player.vy = 0;
+    player.grounded = false;
+    player.hasTrophy = false;
+    player.jetpackFuel = 0;
+    player.hasGun = false;
+    bullets = [];
+    updateHUD();
+}
+
+function updateHUD() {
+    document.getElementById('score-val').innerText = String(score).padStart(6, '0');
+    document.getElementById('level-val').innerText = level;
+    document.getElementById('jet-val').innerText = player.jetpackFuel;
+    document.getElementById('gun-val').innerText = player.hasGun ? 'טָעוּן' : 'ללא';
+    document.getElementById('trophy-val').innerText = player.hasTrophy ? 'ברשותך! לך לדלת!' : 'טרם נמצא';
+    let hats = '';
+    for (let i = 0; i < lives; i++) hats += '🧢';
+    document.getElementById('lives-val').innerText = hats || '💀';
+}
+
+let keys = {};
+
+function update() {
+    if (gameState !== 'PLAYING') return;
+
+    // Movement Left/Right
+    if (keys[37]) { player.vx = -4; player.facing = -1; }
+    else if (keys[39]) { player.vx = 4; player.facing = 1; }
+    else { player.vx = 0; }
+
+    // Jetpack or Jump
+    if (keys[38]) { // Up
+        if (player.jetpackFuel > 0) {
+            player.vy = -5;
+            player.jetpackFuel--;
+            updateHUD();
+        } else if (player.grounded) {
+            player.vy = -11;
+            player.grounded = false;
+            sfx.jump();
+        }
+    }
+
+    // Gravity
+    if (player.jetpackFuel <= 0 || !keys[38]) {
+        player.vy += 0.6;
+        if (player.vy > 9) player.vy = 9;
+    }
+
+    // Horizontal Movement & Tile Collision
+    player.x += player.vx;
+    let tx1 = Math.floor(player.x / TILE_W);
+    let tx2 = Math.floor((player.x + player.w) / TILE_W);
+    let ty1 = Math.floor(player.y / TILE_H);
+    let ty2 = Math.floor((player.y + player.h - 1) / TILE_H);
+
+    if (map[ty1] && (map[ty1][tx1] === 1 || map[ty1][tx2] === 1) || (map[ty2] && (map[ty2][tx1] === 1 || map[ty2][tx2] === 1))) {
+        if (player.vx > 0) player.x = tx2 * TILE_W - player.w - 1;
+        if (player.vx < 0) player.x = (tx1 + 1) * TILE_W + 1;
+    }
+
+    // Vertical Movement & Tile Collision
+    player.y += player.vy;
+    tx1 = Math.floor(player.x / TILE_W);
+    tx2 = Math.floor((player.x + player.w) / TILE_W);
+    ty1 = Math.floor(player.y / TILE_H);
+    ty2 = Math.floor((player.y + player.h) / TILE_H);
+
+    player.grounded = false;
+    if (map[ty2] && (map[ty2][tx1] === 1 || map[ty2][tx2] === 1)) {
+        player.y = ty2 * TILE_H - player.h;
+        player.vy = 0;
+        player.grounded = true;
+    }
+    if (map[ty1] && (map[ty1][tx1] === 1 || map[ty1][tx2] === 1)) {
+        player.y = (ty1 + 1) * TILE_H;
+        player.vy = 0;
+    }
+
+    // Item Pickups & Hazards
+    const ctxTile = Math.floor((player.x + player.w / 2) / TILE_W);
+    const ctyTile = Math.floor((player.y + player.h / 2) / TILE_H);
+
+    if (map[ctyTile]) {
+        const item = map[ctyTile][ctxTile];
+        if (item === 4) { // Gem
+            map[ctyTile][ctxTile] = 0;
+            score += 100;
+            sfx.gem();
+            updateHUD();
+        } else if (item === 3) { // Trophy
+            map[ctyTile][ctxTile] = 0;
+            score += 1000;
+            player.hasTrophy = true;
+            sfx.trophy();
+            updateHUD();
+        } else if (item === 5) { // Jetpack
+            map[ctyTile][ctxTile] = 0;
+            player.jetpackFuel += 120;
+            sfx.gem();
+            updateHUD();
+        } else if (item === 6) { // Gun
+            map[ctyTile][ctxTile] = 0;
+            player.hasGun = true;
+            sfx.gem();
+            updateHUD();
+        } else if (item === 7) { // Fire Hazard
+            die();
+        } else if (item === 2 && player.hasTrophy) { // Door
+            levelClear();
+        }
+    }
+
+    // Update Bullets
+    for (let i = bullets.length - 1; i >= 0; i--) {
+        const b = bullets[i];
+        b.x += b.vx;
+        const btx = Math.floor(b.x / TILE_W);
+        const bty = Math.floor(b.y / TILE_H);
+        if (btx < 0 || btx >= COLS || (map[bty] && map[bty][btx] === 1)) {
+            bullets.splice(i, 1);
+        }
+    }
+}
+
+function shoot() {
+    if (!player.hasGun) return;
+    sfx.shoot();
+    bullets.push({
+        x: player.x + (player.facing === 1 ? player.w + 4 : -10),
+        y: player.y + 14,
+        vx: player.facing * 8
+    });
+}
+
+function die() {
+    sfx.die();
+    lives--;
+    updateHUD();
+    if (lives <= 0) {
+        gameState = 'GAMEOVER';
+        document.getElementById('msg-title').innerText = 'דייב נפסל! המשחק הסתיים';
+        document.getElementById('msg-sub').innerText = `ניקוד סופי: ${score}`;
+        document.getElementById('msg-overlay').classList.remove('hidden');
+    } else {
+        resetLevel();
+    }
+}
+
+function levelClear() {
+    sfx.trophy();
+    level++;
+    score += 2000;
+    gameState = 'LEVEL_CLEAR';
+    document.getElementById('msg-title').innerText = `כל הכבוד! עברת שלב ${level - 1}!`;
+    document.getElementById('msg-sub').innerText = `ניקוד נוכחי: ${score}`;
+    document.getElementById('msg-overlay').classList.remove('hidden');
+}
+
+function render() {
+    ctx.clearRect(0, 0, 800, 440);
+
+    // 1. Draw Map
+    for (let y = 0; y < ROWS; y++) {
+        for (let x = 0; x < COLS; x++) {
+            const tile = map[y][x];
+            const px = x * TILE_W;
+            const py = y * TILE_H;
+
+            if (tile === 1) { // Blue bricks
+                ctx.fillStyle = '#1d4ed8';
+                ctx.fillRect(px, py, TILE_W, TILE_H);
+                ctx.strokeStyle = '#60a5fa';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(px + 1, py + 1, TILE_W - 2, TILE_H - 2);
+            } else if (tile === 2) { // Door
+                ctx.fillStyle = '#854d0e';
+                ctx.fillRect(px + 4, py + 4, TILE_W - 8, TILE_H - 4);
+                ctx.fillStyle = '#fef08a';
+                ctx.fillRect(px + TILE_W - 14, py + 20, 4, 4);
+            } else if (tile === 3) { // Trophy
+                ctx.fillStyle = '#facc15';
+                ctx.font = '26px Arial';
+                ctx.fillText('🏆', px + 6, py + 30);
+            } else if (tile === 4) { // Gem
+                ctx.fillStyle = '#f43f5e';
+                ctx.font = '24px Arial';
+                ctx.fillText('💎', px + 8, py + 30);
+            } else if (tile === 5) { // Jetpack
+                ctx.font = '24px Arial';
+                ctx.fillText('🚀', px + 8, py + 30);
+            } else if (tile === 6) { // Gun
+                ctx.font = '24px Arial';
+                ctx.fillText('🔫', px + 8, py + 30);
+            } else if (tile === 7) { // Fire
+                ctx.font = '26px Arial';
+                ctx.fillText('🔥', px + 6, py + 32);
+            }
+        }
+    }
+
+    // 2. Draw Bullets
+    bullets.forEach(b => {
+        ctx.fillStyle = '#facc15';
+        ctx.fillRect(b.x, b.y, 8, 4);
+    });
+
+    // 3. Draw Dave Character
+    ctx.save();
+    ctx.translate(player.x, player.y);
+
+    // Blue cap
+    ctx.fillStyle = '#0284c7';
+    ctx.fillRect(4, 0, 18, 8);
+    // Face
+    ctx.fillStyle = '#fbcfe8';
+    ctx.fillRect(6, 8, 14, 10);
+    // Red Shirt
+    ctx.fillStyle = '#dc2626';
+    ctx.fillRect(4, 18, 18, 12);
+    // Blue Jeans
+    ctx.fillStyle = '#1e3a8a';
+    ctx.fillRect(4, 30, 8, 6);
+    ctx.fillRect(14, 30, 8, 6);
+
+    // Jetpack flames
+    if (player.jetpackFuel > 0 && keys[38]) {
+        ctx.fillStyle = '#ea580c';
+        ctx.fillRect(player.facing === 1 ? -4 : 22, 16, 6, 12);
+    }
+    ctx.restore();
+}
+
+function gameLoop() {
+    update();
+    render();
+    pollGamepad();
+    requestAnimationFrame(gameLoop);
+}
+
+window.addEventListener('keydown', (e) => {
+    sfx.init();
+    keys[e.keyCode] = true;
+
+    if (e.keyCode === 13) { // Enter / OK
+        if (gameState === 'MENU') {
+            startGame();
+        } else if (gameState === 'LEVEL_CLEAR') {
+            nextLevel();
+        } else if (gameState === 'GAMEOVER') {
+            restart();
+        } else {
+            shoot();
+        }
+    }
+});
+
+window.addEventListener('keyup', (e) => {
+    keys[e.keyCode] = false;
+});
+
+function pollGamepad() {
+    const gp = navigator.getGamepads ? navigator.getGamepads()[0] : null;
+    if (!gp) return;
+
+    keys[37] = gp.axes[0] < -0.4 || gp.buttons[14]?.pressed;
+    keys[39] = gp.axes[0] > 0.4 || gp.buttons[15]?.pressed;
+    keys[38] = gp.buttons[0]?.pressed || gp.buttons[12]?.pressed;
+
+    if (gp.buttons[2]?.pressed || gp.buttons[7]?.pressed) {
+        shoot();
+    }
+}
+
+function startGame() {
+    sfx.init();
+    gameState = 'PLAYING';
+    document.getElementById('menu-overlay').classList.add('hidden');
+    document.getElementById('msg-overlay').classList.add('hidden');
+    resetLevel();
+}
+
+function nextLevel() {
+    gameState = 'PLAYING';
+    document.getElementById('msg-overlay').classList.add('hidden');
+    resetLevel();
+}
+
+function restart() {
+    score = 0;
+    level = 1;
+    lives = 3;
+    startGame();
+}
+
+document.getElementById('btn-start').addEventListener('click', startGame);
+document.getElementById('btn-continue').addEventListener('click', () => {
+    if (gameState === 'GAMEOVER') restart();
+    else nextLevel();
+});
+
+render();
+requestAnimationFrame(gameLoop);
+</script>
+</body>
+</html>

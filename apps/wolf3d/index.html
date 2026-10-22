@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1920, height=1080, initial-scale=1.0, user-scalable=no">
+    <title>וולפנשטיין 3D בעברית - LG webOS TV</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        body, html {
+            width: 1920px;
+            height: 1080px;
+            overflow: hidden;
+            background: #000000;
+            color: #ffffff;
+        }
+        #wolf-screen {
+            position: relative;
+            width: 1920px;
+            height: 1080px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        #viewport-wrapper {
+            position: relative;
+            width: 1920px;
+            height: 920px;
+            background: #1e293b;
+            overflow: hidden;
+        }
+        canvas#viewport {
+            display: block;
+            width: 1920px;
+            height: 920px;
+        }
+        /* Classic Wolf3D Blue Status Bar */
+        #status-bar {
+            width: 1920px;
+            height: 160px;
+            background: #0000a8;
+            border-top: 5px solid #0055ff;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            padding: 0 50px;
+            font-weight: 900;
+            text-shadow: 2px 2px 0px #000;
+            font-family: 'Courier New', Courier, monospace;
+        }
+        .stat-block {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-width: 160px;
+            background: #000055;
+            border: 3px solid #0055ff;
+            border-radius: 10px;
+            padding: 8px 16px;
+        }
+        .stat-label {
+            font-size: 22px;
+            color: #00ffff;
+            letter-spacing: 1px;
+        }
+        .stat-val {
+            font-size: 46px;
+            color: #ffff55;
+            line-height: 1;
+        }
+        #bj-face {
+            width: 110px;
+            height: 130px;
+            background: #000055;
+            border: 3px solid #0055ff;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 60px;
+            box-shadow: 0 0 15px rgba(0, 85, 255, 0.6);
+        }
+        /* Overlay */
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 1920px;
+            height: 1080px;
+            background: rgba(0, 0, 0, 0.92);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            backdrop-filter: blur(8px);
+        }
+        .overlay.hidden { display: none; }
+        .menu-card {
+            background: linear-gradient(135deg, #020617 0%, #000055 100%);
+            border: 4px solid #0055ff;
+            border-radius: 24px;
+            padding: 50px 80px;
+            text-align: center;
+            box-shadow: 0 0 60px rgba(0, 85, 255, 0.7);
+            max-width: 900px;
+        }
+        .menu-title {
+            font-size: 72px;
+            color: #00ffff;
+            text-shadow: 0 0 30px #00ffff;
+            margin-bottom: 20px;
+        }
+        .menu-btn {
+            background: #0000aa;
+            color: #ffffff;
+            font-size: 32px;
+            font-weight: bold;
+            padding: 16px 40px;
+            border: 2px solid #00ffff;
+            border-radius: 16px;
+            cursor: pointer;
+            margin: 10px 0;
+            transition: all 0.2s ease;
+            outline: none;
+        }
+        .menu-btn:hover, .menu-btn:focus, .menu-btn.active {
+            background: #00ffff;
+            color: #000055;
+            transform: scale(1.05);
+            box-shadow: 0 0 35px #00ffff;
+        }
+        .hint-box {
+            margin-top: 30px;
+            padding: 20px;
+            background: rgba(0, 0, 85, 0.6);
+            border-radius: 12px;
+            font-size: 22px;
+            color: #93c5fd;
+            line-height: 1.8;
+            text-align: right;
+        }
+    </style>
+</head>
+<body>
+<div id="wolf-screen">
+    <div id="viewport-wrapper">
+        <canvas id="viewport" width="960" height="460"></canvas>
+    </div>
+
+    <!-- Classic Status Bar (Hebrew) -->
+    <div id="status-bar">
+        <div class="stat-block">
+            <span class="stat-label">קוֹמָה</span>
+            <span id="floor-val" class="stat-val">1</span>
+        </div>
+        <div class="stat-block">
+            <span class="stat-label">נִיקוּד</span>
+            <span id="score-val" class="stat-val">000000</span>
+        </div>
+        <div class="stat-block">
+            <span class="stat-label">חַיִּים</span>
+            <span id="lives-val" class="stat-val">3</span>
+        </div>
+        <div id="bj-face">👱</div>
+        <div class="stat-block">
+            <span class="stat-label">בְּרִיאוּת</span>
+            <span id="health-val" class="stat-val">100%</span>
+        </div>
+        <div class="stat-block">
+            <span class="stat-label">תַּחְמוֹשֶׁת</span>
+            <span id="ammo-val" class="stat-val">8</span>
+        </div>
+    </div>
+
+    <div id="menu-overlay" class="overlay">
+        <div class="menu-card">
+            <h1 class="menu-title">WOLFENSTEIN 3D</h1>
+            <p style="font-size: 26px; color: #93c5fd; margin-bottom: 30px;">הבריחה מטירת וולפנשטיין — מהדורת LG Smart TV בעברית</p>
+            <button id="btn-start" class="menu-btn active">הַתְחֵל מִשְׂחָק</button>
+            <div class="hint-box">
+                <p>🎮 <b>שליטה בשלט LG:</b> חיצים קדימה/אחורה להליכה • ימינה/שמאלה לסיבוב מבט.</p>
+                <p>🔫 <b>כפתור אישור (OK):</b> ירי באקדח / פתיחת דלתות סודיות.</p>
+                <p>🎖️ <b>מטרה:</b> חסל שומרים, אסוף גביעי זהב ומצא את היציאה מהמבוך!</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Web Audio SFX
+class WolfAudio {
+    constructor() { this.ctx = null; }
+    init() {
+        if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        if (this.ctx.state === 'suspended') this.ctx.resume();
+    }
+    shoot() {
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(220, now);
+        osc.frequency.exponentialRampToValueAtTime(40, now + 0.12);
+        gain.gain.setValueAtTime(0.3, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(now + 0.15);
+    }
+    halt() {
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(350, now);
+        osc.frequency.exponentialRampToValueAtTime(150, now + 0.3);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(now + 0.3);
+    }
+}
+const wolfSfx = new WolfAudio();
+
+const canvas = document.getElementById('viewport');
+const ctx = canvas.getContext('2d');
+const W = canvas.width;
+const H = canvas.height;
+
+// Map: 1=Grey Stone, 2=Blue Eagle Wall, 3=Wood, 4=Prison Door
+const map = [
+    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+    [1,0,0,0,0,0,2,0,0,0,0,0,0,0,0,1],
+    [1,0,2,0,2,0,2,0,1,1,0,1,1,0,0,1],
+    [1,0,0,0,0,0,0,0,1,0,0,0,1,0,0,1],
+    [1,0,2,0,2,0,2,0,0,0,0,0,0,0,0,1],
+    [1,0,0,0,0,0,2,0,1,0,0,0,1,0,0,1],
+    [1,2,2,0,2,2,2,0,1,1,4,1,1,0,0,1],
+    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+    [1,0,3,3,3,0,2,0,2,2,0,2,2,0,0,1],
+    [1,0,3,0,0,0,2,0,0,0,0,0,0,0,0,1],
+    [1,0,3,0,3,0,2,0,1,0,0,0,1,0,0,1],
+    [1,0,0,0,3,0,0,0,0,0,0,0,0,0,0,1],
+    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+];
+const MAP_W = 16;
+const MAP_H = 13;
+
+let player = {
+    x: 2.5,
+    y: 2.5,
+    angle: 0,
+    health: 100,
+    ammo: 8,
+    score: 0,
+    isShooting: false
+};
+
+let guards = [
+    { x: 8.5, y: 3.5, alive: true, health: 25, color: '#ca8a04' },
+    { x: 11.5, y: 5.5, alive: true, health: 25, color: '#ca8a04' },
+    { x: 4.5, y: 9.5, alive: true, health: 25, color: '#ca8a04' }
+];
+
+let gameState = 'MENU';
+let keys = {};
+
+function castRay(rayAngle) {
+    let sin = Math.sin(rayAngle);
+    let cos = Math.cos(rayAngle);
+    let dist = 0;
+    while (dist < 20) {
+        dist += 0.04;
+        let tx = Math.floor(player.x + cos * dist);
+        let ty = Math.floor(player.y + sin * dist);
+        if (tx < 0 || tx >= MAP_W || ty < 0 || ty >= MAP_H) return { dist: 20, hit: 1 };
+        if (map[ty][tx] > 0) return { dist: dist, hit: map[ty][tx] };
+    }
+    return { dist: 20, hit: 0 };
+}
+
+function render() {
+    // Ceiling & Floor (Classic Wolf3D dark grey & brown)
+    ctx.fillStyle = '#383838';
+    ctx.fillRect(0, 0, W, H / 2);
+    ctx.fillStyle = '#707070';
+    ctx.fillRect(0, H / 2, W, H / 2);
+
+    const fov = Math.PI / 3;
+    const rays = 160;
+    const step = fov / rays;
+    const sliceW = Math.ceil(W / rays);
+
+    const colors = { 1: '#6b7280', 2: '#1d4ed8', 3: '#b45309', 4: '#059669' };
+    let zBuf = new Float32Array(rays);
+
+    for (let i = 0; i < rays; i++) {
+        const ang = (player.angle - fov / 2) + i * step;
+        const res = castRay(ang);
+        const corrected = res.dist * Math.cos(ang - player.angle);
+        zBuf[i] = corrected;
+
+        const wallH = Math.min(H, H / corrected);
+        const wallY = (H - wallH) / 2;
+
+        ctx.fillStyle = colors[res.hit] || '#6b7280';
+        ctx.fillRect(i * sliceW, wallY, sliceW, wallH);
+        ctx.fillStyle = `rgba(0,0,0,${Math.min(0.8, corrected / 14)})`;
+        ctx.fillRect(i * sliceW, wallY, sliceW, wallH);
+    }
+
+    // Draw Guards
+    guards.forEach(g => {
+        if (!g.alive) return;
+        const dx = g.x - player.x;
+        const dy = g.y - player.y;
+        const dist = Math.hypot(dx, dy);
+        let spriteAng = Math.atan2(dy, dx) - player.angle;
+        while (spriteAng < -Math.PI) spriteAng += Math.PI * 2;
+        while (spriteAng > Math.PI) spriteAng -= Math.PI * 2;
+
+        if (Math.abs(spriteAng) < fov / 2 + 0.2 && dist > 0.5) {
+            const sx = (W / 2) + Math.tan(spriteAng) * (W / 2);
+            const sh = Math.min(H, H / dist);
+            const sy = (H - sh) / 2;
+            const rIdx = Math.floor((sx / W) * rays);
+
+            if (rIdx >= 0 && rIdx < rays && dist < zBuf[rIdx]) {
+                ctx.save();
+                ctx.fillStyle = g.color;
+                ctx.fillRect(sx - sh * 0.15, sy + sh * 0.2, sh * 0.3, sh * 0.6);
+                ctx.fillStyle = '#fde047';
+                ctx.fillRect(sx - sh * 0.1, sy + sh * 0.05, sh * 0.2, sh * 0.15);
+                ctx.restore();
+            }
+        }
+    });
+
+    // Draw Gun in Center
+    ctx.save();
+    const gx = W / 2;
+    const gy = H;
+    const rec = player.isShooting ? 25 : 0;
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(gx - 18, gy - 120 + rec, 36, 120);
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(gx - 12, gy - 130 + rec, 24, 10);
+    if (player.isShooting) {
+        ctx.beginPath();
+        ctx.arc(gx, gy - 145, 35, 0, Math.PI * 2);
+        ctx.fillStyle = '#fef08a';
+        ctx.shadowColor = '#eab308';
+        ctx.shadowBlur = 35;
+        ctx.fill();
+    }
+    ctx.restore();
+}
+
+function shoot() {
+    if (player.ammo <= 0 || player.isShooting) return;
+    wolfSfx.shoot();
+    player.isShooting = true;
+    player.ammo--;
+    document.getElementById('ammo-val').innerText = player.ammo;
+
+    guards.forEach(g => {
+        if (!g.alive) return;
+        const dx = g.x - player.x;
+        const dy = g.y - player.y;
+        const a = Math.atan2(dy, dx) - player.angle;
+        if (Math.abs(a) < 0.25) {
+            g.health -= 30;
+            if (g.health <= 0) {
+                g.alive = false;
+                player.score += 500;
+                player.ammo += 4;
+                document.getElementById('score-val').innerText = String(player.score).padStart(6, '0');
+                document.getElementById('ammo-val').innerText = player.ammo;
+            }
+        }
+    });
+
+    setTimeout(() => { player.isShooting = false; }, 160);
+}
+
+function update() {
+    if (gameState !== 'PLAYING') return;
+    if (keys[37]) player.angle -= 0.04;
+    if (keys[39]) player.angle += 0.04;
+
+    let step = 0;
+    if (keys[38]) step = 0.05;
+    if (keys[40]) step = -0.05;
+
+    if (step !== 0) {
+        let nx = player.x + Math.cos(player.angle) * step;
+        let ny = player.y + Math.sin(player.angle) * step;
+        if (map[Math.floor(player.y)][Math.floor(nx)] === 0) player.x = nx;
+        if (map[Math.floor(ny)][Math.floor(player.x)] === 0) player.y = ny;
+    }
+}
+
+function gameLoop() {
+    update();
+    render();
+    requestAnimationFrame(gameLoop);
+}
+
+window.addEventListener('keydown', (e) => {
+    wolfSfx.init();
+    keys[e.keyCode] = true;
+    if (e.keyCode === 13) {
+        if (gameState === 'MENU') startGame();
+        else shoot();
+    }
+});
+window.addEventListener('keyup', (e) => { keys[e.keyCode] = false; });
+
+function startGame() {
+    wolfSfx.init();
+    gameState = 'PLAYING';
+    document.getElementById('menu-overlay').classList.add('hidden');
+}
+document.getElementById('btn-start').addEventListener('click', startGame);
+
+requestAnimationFrame(gameLoop);
+</script>
+</body>
+</html>
