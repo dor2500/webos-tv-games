@@ -1,10 +1,10 @@
 {
   "id": "com.retrohub.nostalgia",
-  "version": "3.0.0",
+  "version": "4.0.0",
   "vendor": "Retro Cloud Arcade dor2500",
   "type": "web",
   "main": "index.html",
-  "title": "ארקייד נוסטלגיה וענן — Retro Cloud Arcade",
+  "title": "ארקייד נוסטלגיה וענן — 200+ משחקים",
   "icon": "icon.png",
   "largeIcon": "largeIcon.png",
   "bgImage": "splash.png",
