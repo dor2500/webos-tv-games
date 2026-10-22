@@ -1,0 +1,19 @@
+{
+  "id": "com.rovio.angrybirdsrio",
+  "version": "1.0.0",
+  "vendor": "Rovio Mobile / LG TV Edition",
+  "type": "web",
+  "main": "index.html",
+  "title": "Angry Birds Rio (HD)",
+  "icon": "icon.png",
+  "largeIcon": "largeIcon.png",
+  "bgImage": "splash.png",
+  "splashBackground": "splash.png",
+  "resolution": "1920x1080",
+  "bgColor": "#0284c7",
+  "iconColor": "#0284c7",
+  "supportGIP": false,
+  "requiredPermissions": [],
+  "handlesRelaunch": true,
+  "uiRevision": 2
+}

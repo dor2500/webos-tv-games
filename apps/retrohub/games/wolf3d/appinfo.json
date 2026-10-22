@@ -1,0 +1,19 @@
+{
+  "id": "com.idsoftware.wolf3d",
+  "version": "1.0.0",
+  "vendor": "id Software / Hebrew TV Port",
+  "type": "web",
+  "main": "index.html",
+  "title": "וולפנשטיין 3D בעברית",
+  "icon": "icon.png",
+  "largeIcon": "largeIcon.png",
+  "bgImage": "splash.png",
+  "splashBackground": "splash.png",
+  "resolution": "1920x1080",
+  "bgColor": "#0b0f19",
+  "iconColor": "#3B82F6",
+  "supportGIP": false,
+  "requiredPermissions": [],
+  "handlesRelaunch": true,
+  "uiRevision": 2
+}

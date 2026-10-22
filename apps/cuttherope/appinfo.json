@@ -1,0 +1,19 @@
+{
+  "id": "com.dor.cuttherope",
+  "version": "1.0.0",
+  "vendor": "Retro TV Collection dor2500",
+  "type": "web",
+  "main": "index.html",
+  "title": "Cut the Rope (חתוך את החבל)",
+  "icon": "icon.png",
+  "largeIcon": "largeIcon.png",
+  "bgImage": "splash.png",
+  "splashBackground": "splash.png",
+  "resolution": "1920x1080",
+  "bgColor": "#000000",
+  "iconColor": "#38BDF8",
+  "supportGIP": false,
+  "requiredPermissions": [],
+  "handlesRelaunch": true,
+  "uiRevision": 2
+}

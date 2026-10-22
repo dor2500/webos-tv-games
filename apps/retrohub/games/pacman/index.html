@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1920, height=1080, initial-scale=1.0, user-scalable=no">
+    <title>פאקמן ארקייד - Pac-Man LG webOS TV</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; font-family: 'Segoe UI', Tahoma, sans-serif; }
+        body, html { width: 1920px; height: 1080px; overflow: hidden; background: #000; }
+        #game-container { position: relative; width: 1920px; height: 1080px; display: flex; justify-content: center; align-items: center; background: radial-gradient(circle at center, #111827 0%, #000000 100%); }
+        canvas { display: block; background: #000; border: 4px solid #1e3a8a; border-radius: 12px; box-shadow: 0 0 40px rgba(30, 58, 138, 0.8); }
+        #hud {
+            position: absolute; top: 25px; left: 50px; right: 50px;
+            display: flex; justify-content: space-between; align-items: center;
+            font-size: 28px; font-weight: 900; color: #fff;
+            pointer-events: none;
+        }
+        .badge { background: rgba(15, 23, 42, 0.8); padding: 8px 24px; border-radius: 14px; border: 2px solid #facc15; }
+    </style>
+</head>
+<body>
+<div id="game-container">
+    <div id="hud">
+        <div class="badge">🟡 PAC-MAN ARCADE 1980 — שלוט עם חיצי השלט!</div>
+        <div class="badge">נִיקוּד: <span id="score-val">0</span> | חַיִּים: <span id="lives-val">❤️❤️❤️</span></div>
+    </div>
+    <canvas id="pacCanvas" width="920" height="920"></canvas>
+</div>
+
+<script>
+class PacAudio {
+    constructor() { this.ctx = null; }
+    init() { if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)(); }
+    waka(high) {
+        if (!this.ctx) return;
+        const o = this.ctx.createOscillator(); const g = this.ctx.createGain();
+        o.type = 'triangle';
+        o.frequency.setValueAtTime(high ? 520 : 380, this.ctx.currentTime);
+        o.frequency.exponentialRampToValueAtTime(high ? 380 : 260, this.ctx.currentTime + 0.08);
+        g.gain.setValueAtTime(0.15, this.ctx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.08);
+        o.connect(g); g.connect(this.ctx.destination);
+        o.start(); o.stop(this.ctx.currentTime + 0.08);
+    }
+    eatGhost() {
+        if (!this.ctx) return;
+        [400, 600, 800, 1100].forEach((f, i) => {
+            setTimeout(() => {
+                const o = this.ctx.createOscillator(); const g = this.ctx.createGain();
+                o.frequency.setValueAtTime(f, this.ctx.currentTime);
+                g.gain.setValueAtTime(0.2, this.ctx.currentTime);
+                g.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.1);
+                o.connect(g); g.connect(this.ctx.destination);
+                o.start(); o.stop(this.ctx.currentTime + 0.1);
+            }, i * 60);
+        });
+    }
+    die() {
+        if (!this.ctx) return;
+        const o = this.ctx.createOscillator(); const g = this.ctx.createGain();
+        o.type = 'sawtooth';
+        o.frequency.setValueAtTime(800, this.ctx.currentTime);
+        o.frequency.linearRampToValueAtTime(120, this.ctx.currentTime + 0.6);
+        g.gain.setValueAtTime(0.25, this.ctx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.6);
+        o.connect(g); g.connect(this.ctx.destination);
+        o.start(); o.stop(this.ctx.currentTime + 0.6);
+    }
+}
+const sfx = new PacAudio();
+
+const canvas = document.getElementById('pacCanvas');
+const ctx = canvas.getContext('2d');
+
+const COLS = 23;
+const ROWS = 23;
+const TILE = 40; // 920x920
+
+// 1: Wall, 0: Pellet, 2: Power Pellet, 3: Empty
+const map = [
+    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+    [1,2,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,2,1],
+    [1,0,1,1,1,0,1,1,1,1,0,1,0,1,1,1,1,0,1,1,1,0,1],
+    [1,0,1,1,1,0,1,1,1,1,0,1,0,1,1,1,1,0,1,1,1,0,1],
+    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+    [1,0,1,1,1,0,1,0,1,1,1,1,1,1,1,0,1,0,1,1,1,0,1],
+    [1,0,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,0,1],
+    [1,1,1,1,1,0,1,1,1,3,3,3,3,3,1,1,1,0,1,1,1,1,1],
+    [3,3,3,3,1,0,1,3,3,3,3,3,3,3,3,3,1,0,1,3,3,3,3],
+    [1,1,1,1,1,0,1,3,1,1,3,3,3,1,1,3,1,0,1,1,1,1,1],
+    [3,3,3,3,3,0,3,3,1,3,3,3,3,3,1,3,3,0,3,3,3,3,3],
+    [1,1,1,1,1,0,1,3,1,1,1,1,1,1,1,3,1,0,1,1,1,1,1],
+    [3,3,3,3,1,0,1,3,3,3,3,3,3,3,3,3,1,0,1,3,3,3,3],
+    [1,1,1,1,1,0,1,3,1,1,1,1,1,1,1,3,1,0,1,1,1,1,1],
+    [1,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,1],
+    [1,0,1,1,1,0,1,1,1,1,0,1,0,1,1,1,1,0,1,1,1,0,1],
+    [1,2,0,0,1,0,0,0,0,0,0,3,0,0,0,0,0,0,1,0,0,2,1],
+    [1,1,1,0,1,0,1,0,1,1,1,1,1,1,1,0,1,0,1,0,1,1,1],
+    [1,0,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,0,1],
+    [1,0,1,1,1,1,1,1,1,1,0,1,0,1,1,1,1,1,1,1,1,0,1],
+    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+];
+
+let pac = { x: 11, y: 16, px: 11 * 40 + 20, py: 16 * 40 + 20, dirX: 0, dirY: 0, nextDirX: 0, nextDirY: 0, angle: 0, mouth: 0.2, mouthDir: 0.04 };
+let score = 0;
+let lives = 3;
+let scareTimer = 0;
+let wakaFlip = false;
+
+let ghosts = [
+    { x: 10, y: 10, px: 10 * 40 + 20, py: 10 * 40 + 20, color: '#ef4444', dirX: 1, dirY: 0 }, // Blinky
+    { x: 11, y: 10, px: 11 * 40 + 20, py: 10 * 40 + 20, color: '#ec4899', dirX: -1, dirY: 0 }, // Pinky
+    { x: 12, y: 10, px: 12 * 40 + 20, py: 10 * 40 + 20, color: '#06b6d4', dirX: 0, dirY: 1 },  // Inky
+    { x: 11, y: 9,  px: 11 * 40 + 20, py: 9 * 40 + 20,  color: '#f97316', dirX: 0, dirY: -1 }  // Clyde
+];
+
+function canMove(gx, gy) {
+    if (gx < 0 || gx >= COLS || gy < 0 || gy >= ROWS) return true;
+    return map[gy][gx] !== 1;
+}
+
+function update() {
+    // Pacman movement
+    const curGx = Math.round((pac.px - 20) / TILE);
+    const curGy = Math.round((pac.py - 20) / TILE);
+
+    // Try change direction when aligned with grid
+    const atCenter = Math.abs(pac.px - (curGx * TILE + 20)) < 2 && Math.abs(pac.py - (curGy * TILE + 20)) < 2;
+
+    if (atCenter && (pac.nextDirX !== 0 || pac.nextDirY !== 0)) {
+        if (canMove(curGx + pac.nextDirX, curGy + pac.nextDirY)) {
+            pac.dirX = pac.nextDirX;
+            pac.dirY = pac.nextDirY;
+            pac.px = curGx * TILE + 20;
+            pac.py = curGy * TILE + 20;
+        }
+    }
+
+    if (canMove(curGx + pac.dirX, curGy + pac.dirY) || !atCenter) {
+        pac.px += pac.dirX * 3.5;
+        pac.py += pac.dirY * 3.5;
+    }
+
+    // Wrap around
+    if (pac.px < 0) pac.px = 920;
+    if (pac.px > 920) pac.px = 0;
+
+    // Eat pellets
+    const gx = Math.floor(pac.px / TILE);
+    const gy = Math.floor(pac.py / TILE);
+    if (map[gy] && (map[gy][gx] === 0 || map[gy][gx] === 2)) {
+        sfx.init();
+        if (map[gy][gx] === 2) {
+            score += 50;
+            scareTimer = 350; // Scare ghosts
+            sfx.eatGhost();
+        } else {
+            score += 10;
+            wakaFlip = !wakaFlip;
+            sfx.waka(wakaFlip);
+        }
+        map[gy][gx] = 3;
+        document.getElementById('score-val').innerText = score;
+    }
+
+    // Pacman mouth animation
+    pac.mouth += pac.mouthDir;
+    if (pac.mouth > 0.35 || pac.mouth < 0.02) pac.mouthDir *= -1;
+
+    // Scare timer
+    if (scareTimer > 0) scareTimer--;
+
+    // Move ghosts
+    ghosts.forEach(g => {
+        const ghGx = Math.round((g.px - 20) / TILE);
+        const ghGy = Math.round((g.py - 20) / TILE);
+        const ghCenter = Math.abs(g.px - (ghGx * TILE + 20)) < 2 && Math.abs(g.py - (ghGy * TILE + 20)) < 2;
+
+        if (ghCenter) {
+            const dirs = [{x:1,y:0},{x:-1,y:0},{x:0,y:1},{x:0,y:-1}];
+            const valid = dirs.filter(d => canMove(ghGx + d.x, ghGy + d.y) && !(d.x === -g.dirX && d.y === -g.dirY));
+            if (valid.length > 0) {
+                const chosen = valid[Math.floor(Math.random() * valid.length)];
+                g.dirX = chosen.x;
+                g.dirY = chosen.y;
+                g.px = ghGx * TILE + 20;
+                g.py = ghGy * TILE + 20;
+            }
+        }
+        g.px += g.dirX * (scareTimer > 0 ? 1.8 : 2.8);
+        g.py += g.dirY * (scareTimer > 0 ? 1.8 : 2.8);
+
+        // Collision with Pacman
+        const dist = Math.hypot(pac.px - g.px, pac.py - g.py);
+        if (dist < 26) {
+            if (scareTimer > 0) {
+                // Eat ghost
+                sfx.eatGhost();
+                score += 200;
+                document.getElementById('score-val').innerText = score;
+                g.px = 11 * 40 + 20;
+                g.py = 10 * 40 + 20;
+            } else {
+                // Pacman die
+                sfx.die();
+                lives--;
+                document.getElementById('lives-val').innerText = '❤️'.repeat(lives);
+                pac.px = 11 * 40 + 20;
+                pac.py = 16 * 40 + 20;
+                pac.dirX = 0; pac.dirY = 0; pac.nextDirX = 0; pac.nextDirY = 0;
+                if (lives <= 0) {
+                    alert('סוף המשחק! לחץ אישור לשחק שוב');
+                    location.reload();
+                }
+            }
+        }
+    });
+}
+
+function draw() {
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, 920, 920);
+
+    // Draw Map
+    for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+            const cell = map[r][c];
+            const x = c * TILE;
+            const y = r * TILE;
+
+            if (cell === 1) {
+                ctx.fillStyle = '#1e40af';
+                ctx.fillRect(x + 2, y + 2, TILE - 4, TILE - 4);
+                ctx.strokeStyle = '#3b82f6';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(x + 2, y + 2, TILE - 4, TILE - 4);
+            } else if (cell === 0) {
+                ctx.fillStyle = '#fde047';
+                ctx.beginPath();
+                ctx.arc(x + TILE / 2, y + TILE / 2, 4, 0, Math.PI * 2);
+                ctx.fill();
+            } else if (cell === 2) {
+                ctx.fillStyle = '#fef08a';
+                ctx.beginPath();
+                ctx.arc(x + TILE / 2, y + TILE / 2, 9, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+    }
+
+    // Draw Pacman
+    ctx.save();
+    ctx.translate(pac.px, pac.py);
+    let rot = 0;
+    if (pac.dirX === 1) rot = 0;
+    else if (pac.dirX === -1) rot = Math.PI;
+    else if (pac.dirY === 1) rot = Math.PI / 2;
+    else if (pac.dirY === -1) rot = -Math.PI / 2;
+    ctx.rotate(rot);
+
+    ctx.fillStyle = '#facc15';
+    ctx.beginPath();
+    ctx.arc(0, 0, 16, pac.mouth * Math.PI, (2 - pac.mouth) * Math.PI);
+    ctx.lineTo(0, 0);
+    ctx.fill();
+    ctx.restore();
+
+    // Draw Ghosts
+    ghosts.forEach(g => {
+        ctx.fillStyle = scareTimer > 0 ? (scareTimer < 80 && Math.floor(scareTimer / 10) % 2 === 0 ? '#fff' : '#3b82f6') : g.color;
+        ctx.beginPath();
+        ctx.arc(g.px, g.py - 2, 14, Math.PI, 0, false);
+        ctx.lineTo(g.px + 14, g.py + 14);
+        ctx.lineTo(g.px + 7, g.py + 9);
+        ctx.lineTo(g.px, g.py + 14);
+        ctx.lineTo(g.px - 7, g.py + 9);
+        ctx.lineTo(g.px - 14, g.py + 14);
+        ctx.closePath();
+        ctx.fill();
+
+        // Eyes
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.arc(g.px - 5, g.py - 3, 4, 0, Math.PI * 2);
+        ctx.arc(g.px + 5, g.py - 3, 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#000';
+        ctx.beginPath();
+        ctx.arc(g.px - 5 + g.dirX * 2, g.py - 3 + g.dirY * 2, 2, 0, Math.PI * 2);
+        ctx.arc(g.px + 5 + g.dirX * 2, g.py - 3 + g.dirY * 2, 2, 0, Math.PI * 2);
+        ctx.fill();
+    });
+}
+
+function gameLoop() {
+    update();
+    draw();
+    requestAnimationFrame(gameLoop);
+}
+
+// Controller
+window.addEventListener('keydown', (e) => {
+    sfx.init();
+    switch (e.keyCode) {
+        case 37: pac.nextDirX = -1; pac.nextDirY = 0; break; // Left
+        case 38: pac.nextDirX = 0; pac.nextDirY = -1; break; // Up
+        case 39: pac.nextDirX = 1; pac.nextDirY = 0; break;  // Right
+        case 40: pac.nextDirX = 0; pac.nextDirY = 1; break;  // Down
+    }
+});
+
+gameLoop();
+</script>
+</body>
+</html>

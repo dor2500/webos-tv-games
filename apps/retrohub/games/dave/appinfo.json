@@ -1,0 +1,19 @@
+{
+  "id": "com.dor.dangerousdave",
+  "version": "1.0.0",
+  "vendor": "Retro Hub (Hebrew Edition)",
+  "type": "web",
+  "main": "index.html",
+  "title": "דייב המסוכן בעברית",
+  "icon": "icon.png",
+  "largeIcon": "largeIcon.png",
+  "bgImage": "splash.png",
+  "splashBackground": "splash.png",
+  "resolution": "1920x1080",
+  "bgColor": "#0b0f19",
+  "iconColor": "#F59E0B",
+  "supportGIP": false,
+  "requiredPermissions": [],
+  "handlesRelaunch": true,
+  "uiRevision": 2
+}

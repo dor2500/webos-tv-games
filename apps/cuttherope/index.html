@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1920, height=1080, initial-scale=1.0, user-scalable=no">
+    <title>חתוך את החבל - Cut the Rope for LG webOS TV</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; font-family: 'Segoe UI', Tahoma, sans-serif; }
+        body, html { width: 1920px; height: 1080px; overflow: hidden; background: #271d18; }
+        #canvas-wrapper { position: relative; width: 1920px; height: 1080px; background: radial-gradient(circle at center, #573d2a 0%, #20130d 100%); }
+        canvas { display: block; width: 1920px; height: 1080px; }
+        #hud {
+            position: absolute; top: 25px; left: 50px; right: 50px;
+            display: flex; justify-content: space-between; align-items: center;
+            font-size: 28px; font-weight: bold; color: #fff;
+            pointer-events: none;
+        }
+        .badge { background: rgba(0,0,0,0.65); padding: 10px 28px; border-radius: 16px; border: 2px solid #22c55e; }
+    </style>
+</head>
+<body>
+<div id="canvas-wrapper">
+    <div id="hud">
+        <div class="badge">🍬 CUT THE ROPE — חתוך את החבל עם סמן ה-Magic Remote!</div>
+        <div class="badge">⭐ כוכבים: <span id="stars-val">0/3</span> | שלב: 1</div>
+    </div>
+    <canvas id="ropeCanvas" width="1920" height="1080"></canvas>
+</div>
+
+<script>
+class CutAudio {
+    constructor() { this.ctx = null; }
+    init() { if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)(); }
+    slice() {
+        if (!this.ctx) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.frequency.setValueAtTime(800, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(300, this.ctx.currentTime + 0.1);
+        gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.1);
+        osc.connect(gain); gain.connect(this.ctx.destination);
+        osc.start(); osc.stop(this.ctx.currentTime + 0.1);
+    }
+    nom() {
+        if (!this.ctx) return;
+        [523, 659, 784, 1046].forEach((f, i) => {
+            setTimeout(() => {
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(f, this.ctx.currentTime);
+                gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.15);
+                osc.connect(gain); gain.connect(this.ctx.destination);
+                osc.start(); osc.stop(this.ctx.currentTime + 0.15);
+            }, i * 90);
+        });
+    }
+}
+const sfx = new CutAudio();
+
+const canvas = document.getElementById('ropeCanvas');
+const ctx = canvas.getContext('2d');
+
+let stars = [
+    { x: 960, y: 480, collected: false },
+    { x: 800, y: 600, collected: false },
+    { x: 1120, y: 600, collected: false }
+];
+
+// Om Nom
+let omNom = { x: 960, y: 880, r: 70, mouthOpen: false, fed: false };
+
+// Candy with rope physics
+let pin = { x: 960, y: 150 };
+let ropeLength = 320;
+let ropeCut = false;
+let angle = Math.PI / 4;
+let aVel = 0;
+let aAcc = 0;
+
+let candy = { x: 960, y: 470, vx: 0, vy: 0, r: 24 };
+
+let isSlicing = false;
+let lastX = 0, lastY = 0;
+
+function resetGame() {
+    ropeCut = false;
+    angle = Math.PI / 4;
+    aVel = 0;
+    omNom.fed = false;
+    stars.forEach(s => s.collected = false);
+    document.getElementById('stars-val').innerText = '0/3';
+}
+
+canvas.addEventListener('mousedown', (e) => {
+    sfx.init();
+    isSlicing = true;
+    const r = canvas.getBoundingClientRect();
+    lastX = (e.clientX - r.left) * (1920 / r.width);
+    lastY = (e.clientY - r.top) * (1080 / r.height);
+});
+
+canvas.addEventListener('mousemove', (e) => {
+    if (!isSlicing) return;
+    const r = canvas.getBoundingClientRect();
+    const curX = (e.clientX - r.left) * (1920 / r.width);
+    const curY = (e.clientY - r.top) * (1080 / r.height);
+
+    // Check intersection with rope
+    if (!ropeCut) {
+        const midRopeX = (pin.x + candy.x) / 2;
+        const midRopeY = (pin.y + candy.y) / 2;
+        if (Math.hypot(curX - midRopeX, curY - midRopeY) < 60) {
+            ropeCut = true;
+            sfx.slice();
+            candy.vx = -Math.sin(angle) * aVel * ropeLength;
+            candy.vy = Math.cos(angle) * aVel * ropeLength;
+        }
+    }
+    lastX = curX; lastY = curY;
+});
+
+window.addEventListener('mouseup', () => { isSlicing = false; });
+
+function update() {
+    if (!ropeCut) {
+        // Pendulum simulation
+        const gravity = 0.003;
+        aAcc = (-1 * gravity) * Math.sin(angle);
+        aVel += aAcc;
+        aVel *= 0.992; // Damping
+        angle += aVel;
+
+        candy.x = pin.x + ropeLength * Math.sin(angle);
+        candy.y = pin.y + ropeLength * Math.cos(angle);
+    } else if (!omNom.fed) {
+        // Free fall
+        candy.x += candy.vx;
+        candy.y += candy.vy;
+        candy.vy += 0.45; // Gravity
+
+        // Out of bounds reset
+        if (candy.y > 1150) setTimeout(resetGame, 800);
+    }
+
+    // Check stars
+    stars.forEach(s => {
+        if (!s.collected && Math.hypot(candy.x - s.x, candy.y - s.y) < 40) {
+            s.collected = true;
+            const c = stars.filter(x => x.collected).length;
+            document.getElementById('stars-val').innerText = `${c}/3`;
+        }
+    });
+
+    // Check Om Nom eating
+    const distToMouth = Math.hypot(candy.x - omNom.x, candy.y - (omNom.y - 20));
+    omNom.mouthOpen = distToMouth < 200;
+
+    if (!omNom.fed && distToMouth < 60) {
+        omNom.fed = true;
+        sfx.nom();
+        setTimeout(resetGame, 2200);
+    }
+}
+
+function render() {
+    ctx.clearRect(0, 0, 1920, 1080);
+
+    // Pin
+    ctx.fillStyle = '#78350f';
+    ctx.beginPath(); ctx.arc(pin.x, pin.y, 14, 0, Math.PI * 2); ctx.fill();
+
+    // Rope
+    if (!ropeCut) {
+        ctx.strokeStyle = '#ca8a04'; ctx.lineWidth = 6;
+        ctx.beginPath(); ctx.moveTo(pin.x, pin.y); ctx.lineTo(candy.x, candy.y); ctx.stroke();
+    }
+
+    // Stars
+    stars.forEach(s => {
+        if (!s.collected) {
+            ctx.fillStyle = '#facc15';
+            ctx.font = '36px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('⭐', s.x, s.y);
+        }
+    });
+
+    // Om Nom Character
+    ctx.save();
+    ctx.translate(omNom.x, omNom.y);
+    // Green Body
+    ctx.fillStyle = '#22c55e';
+    ctx.beginPath(); ctx.ellipse(0, 0, omNom.r, omNom.r * 0.8, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#16a34a'; ctx.lineWidth = 4; ctx.stroke();
+
+    // Big Eyes
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(-30, -50, 24, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(30, -50, 24, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#000';
+    ctx.beginPath(); ctx.arc(-26, -50, 10, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(34, -50, 10, 0, Math.PI * 2); ctx.fill();
+
+    // Mouth
+    ctx.fillStyle = '#7f1d1d';
+    ctx.beginPath();
+    if (omNom.mouthOpen || omNom.fed) {
+        ctx.arc(0, -10, 40, 0, Math.PI);
+    } else {
+        ctx.arc(0, 5, 20, 0, Math.PI);
+    }
+    ctx.fill();
+    // Teeth
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(-16, -10, 8, 10); ctx.fillRect(8, -10, 8, 10);
+    ctx.restore();
+
+    // Candy
+    if (!omNom.fed) {
+        ctx.save();
+        ctx.translate(candy.x, candy.y);
+        ctx.fillStyle = '#dc2626';
+        ctx.beginPath(); ctx.arc(0, 0, candy.r, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#fef08a';
+        ctx.beginPath(); ctx.arc(0, 0, candy.r * 0.5, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+    } else {
+        ctx.fillStyle = '#facc15';
+        ctx.font = '40px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('😋 טָעִים מְאוֹד!', omNom.x, omNom.y - 120);
+    }
+}
+
+function loop() {
+    update();
+    render();
+    requestAnimationFrame(loop);
+}
+loop();
+</script>
+</body>
+</html>

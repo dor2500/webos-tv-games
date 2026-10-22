@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1920, height=1080, initial-scale=1.0, user-scalable=no">
+    <title>ארקייד נוסטלגיה וענן - LG webOS TV Online Cloud Arcade</title>
+    <style>
+        * { box-sizing: border-box; user-select: none; -webkit-user-select: none; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body, html { width: 100vw; height: 100vh; overflow: hidden; background: #070913; color: #ffffff; }
+
+        #hub-view {
+            position: relative; width: 100%; height: 100%; display: flex; flex-direction: column;
+            background: radial-gradient(circle at 80% 20%, #1e1b4b 0%, #070913 75%);
+        }
+
+        /* Header */
+        header {
+            width: 100%; height: 90px; display: flex; justify-content: space-between; align-items: center;
+            padding: 0 50px; background: linear-gradient(180deg, rgba(15, 23, 42, 0.95) 0%, transparent 100%);
+            z-index: 10;
+        }
+        .brand { display: flex; align-items: center; gap: 20px; }
+        .logo-badge {
+            background: linear-gradient(135deg, #06b6d4, #a855f7); color: #fff;
+            padding: 8px 24px; border-radius: 12px; font-size: 24px; font-weight: 900; letter-spacing: 2px;
+            box-shadow: 0 0 25px rgba(6, 182, 212, 0.6);
+        }
+        .brand-title { font-size: 28px; font-weight: 800; color: #f8fafc; }
+        
+        .cloud-controls { display: flex; align-items: center; gap: 16px; }
+        .cloud-status {
+            display: flex; align-items: center; gap: 10px; font-size: 19px; color: #4ade80; font-weight: bold;
+            background: rgba(15, 23, 42, 0.8); padding: 8px 18px; border-radius: 20px; border: 1px solid #22c55e;
+        }
+        .cloud-dot { width: 12px; height: 12px; border-radius: 50%; background: #4ade80; box-shadow: 0 0 10px #4ade80; }
+
+        /* Category Filter Pills */
+        #filters-bar {
+            display: flex; gap: 16px; padding: 0 50px; margin-top: 5px; z-index: 10;
+        }
+        .filter-pill {
+            background: rgba(30, 41, 59, 0.6); border: 2px solid #475569; color: #94a3b8;
+            padding: 8px 22px; border-radius: 20px; font-size: 17px; font-weight: bold; cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .filter-pill:hover, .filter-pill.active {
+            background: #38bdf8; color: #0f172a; border-color: #ffffff;
+            box-shadow: 0 0 20px rgba(56, 189, 248, 0.6);
+        }
+
+        /* Hero Showcase */
+        #hero-area {
+            position: relative; height: 440px; padding: 15px 50px; display: flex;
+            align-items: center; justify-content: space-between;
+        }
+        .hero-info { max-width: 1050px; z-index: 5; }
+        .badges-row { display: flex; gap: 12px; margin-bottom: 12px; }
+        .tag {
+            background: rgba(30, 41, 59, 0.8); border: 1px solid #64748b; color: #38bdf8;
+            font-size: 17px; font-weight: bold; padding: 4px 14px; border-radius: 8px;
+        }
+        .tag.gold { background: rgba(234, 179, 8, 0.15); border-color: #eab308; color: #facc15; }
+        .tag.green { background: rgba(34, 197, 94, 0.15); border-color: #22c55e; color: #4ade80; }
+        .hero-title {
+            font-size: 50px; font-weight: 900; color: #ffffff; margin-bottom: 10px;
+            text-shadow: 0 0 25px rgba(168, 85, 247, 0.5);
+        }
+        .hero-desc { font-size: 21px; color: #cbd5e1; line-height: 1.45; margin-bottom: 18px; min-height: 62px; }
+        .hero-controls-hint { font-size: 19px; color: #c084fc; font-weight: bold; margin-bottom: 22px; }
+        .btn-play {
+            background: linear-gradient(135deg, #06b6d4, #a855f7); color: #ffffff;
+            font-size: 26px; font-weight: 800; padding: 14px 44px; border-radius: 14px; border: none;
+            cursor: pointer; box-shadow: 0 0 30px rgba(6, 182, 212, 0.7); transition: all 0.2s ease; outline: none;
+        }
+        .btn-play:focus, .btn-play:hover, .btn-play.active {
+            transform: scale(1.08); box-shadow: 0 0 45px rgba(168, 85, 247, 1); border: 3px solid #ffffff;
+        }
+        .hero-poster {
+            width: 500px; height: 300px; border-radius: 20px; border: 3px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 0 45px rgba(0, 0, 0, 0.9); object-fit: cover;
+        }
+
+        /* Carousel Track */
+        #carousel-container { width: 100%; height: 370px; padding: 0 50px 25px; }
+        .carousel-track {
+            display: flex; gap: 22px; overflow-x: auto; padding: 15px 5px; scroll-behavior: smooth;
+        }
+        .carousel-track::-webkit-scrollbar { display: none; }
+
+        .game-card {
+            flex: 0 0 210px; height: 275px; background: #111827; border: 3px solid #1f2937;
+            border-radius: 18px; padding: 12px; display: flex; flex-direction: column;
+            align-items: center; justify-content: space-between; cursor: pointer;
+            transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1); outline: none;
+        }
+        .game-card:hover, .game-card:focus, .game-card.focused {
+            transform: translateY(-10px) scale(1.06); border-color: #38bdf8;
+            box-shadow: 0 0 30px rgba(56, 189, 248, 0.7);
+            background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+        }
+        .card-icon {
+            width: 120px; height: 120px; border-radius: 18px; object-fit: cover;
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.6); border: 2px solid rgba(255, 255, 255, 0.1);
+        }
+        .card-name { font-size: 18px; font-weight: 800; text-align: center; color: #f1f5f9; margin-top: 6px; line-height: 1.25; }
+        .card-genre { font-size: 14px; color: #94a3b8; }
+
+        /* Fullscreen Player */
+        #player-view {
+            position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; background: #000;
+            z-index: 1000; display: none;
+        }
+        #player-view.active { display: block; }
+        #game-frame { width: 100%; height: 100%; border: none; display: block; }
+        #exit-bar {
+            position: absolute; top: 15px; left: 20px; background: rgba(15, 23, 42, 0.9);
+            border: 2px solid #ef4444; color: #ffffff; font-size: 19px; font-weight: bold;
+            padding: 8px 22px; border-radius: 12px; cursor: pointer; box-shadow: 0 0 20px rgba(239, 68, 68, 0.6);
+            z-index: 1010; transition: all 0.2s ease;
+        }
+        #exit-bar:hover { background: #ef4444; transform: scale(1.05); }
+    </style>
+</head>
+<body>
+
+<div id="hub-view">
+    <header>
+        <div class="brand">
+            <span class="logo-badge">CLOUD ARCADE</span>
+            <span class="brand-title">ארקייד נוסטלגיה וענן — 16 משחקי רטרו לטלוויזיה LG webOS ולדפדפן</span>
+        </div>
+        <div class="cloud-controls">
+            <div class="cloud-status">
+                <div class="cloud-dot"></div>
+                <span>GitHub Cloud Online (16 Games)</span>
+            </div>
+        </div>
+    </header>
+
+    <div id="filters-bar">
+        <button class="filter-pill active" data-cat="ALL">🌟 הכל (16)</button>
+        <button class="filter-pill" data-cat="POINTER">🎯 סמן Magic Remote (5)</button>
+        <button class="filter-pill" data-cat="PLATFORM">🍄 פלטפורמה ומיומנות (4)</button>
+        <button class="filter-pill" data-cat="3D">🔫 תלת-מימד ופעולה (3)</button>
+        <button class="filter-pill" data-cat="PUZZLE">🧩 ארקייד ופאזלים (4)</button>
+    </div>
+
+    <div id="hero-area">
+        <div class="hero-info">
+            <div class="badges-row">
+                <span id="hero-badge-lang" class="tag gold">עברית מלאה</span>
+                <span id="hero-badge-control" class="tag">סמן Magic Remote</span>
+                <span id="hero-badge-mode" class="tag green">⚡ טעינת ענן ישירה</span>
+            </div>
+            <h1 id="hero-title" class="hero-title">Angry Birds Rio</h1>
+            <p id="hero-desc" class="hero-desc">גרסת ריו הברזילאית האגדית! שחרר את הציפורים הכלואות בכלובים עם שלט ה-Magic Remote של ה-LG שלך.</p>
+            <div id="hero-controls" class="hero-controls-hint">🎮 שליטה: סמן השלט (פוינטר) למתיחת הרוגטקה ושחרור</div>
+            <div class="hero-actions">
+                <button id="btn-hero-play" class="btn-play active">▶ שַׂחֵק עַכְשָׁיו</button>
+            </div>
+        </div>
+        <img id="hero-poster" class="hero-poster" src="apps/retrohub/games/angrybirds_rio/splash.png" alt="Game Banner">
+    </div>
+
+    <div id="carousel-container">
+        <div class="carousel-track" id="cards-track"></div>
+    </div>
+</div>
+
+<div id="player-view">
+    <button id="exit-bar">✕ חֲזָרָה לְאַרְקֵייד הָעֲנָן (ESC / חזור בשלט)</button>
+    <iframe id="game-frame" src="about:blank"></iframe>
+</div>
+
+<script>
+class UISound {
+    constructor() { this.ctx = null; }
+    init() { if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)(); }
+    beep(f, d=0.05) {
+        if (!this.ctx) return;
+        const o = this.ctx.createOscillator(); const g = this.ctx.createGain();
+        o.frequency.setValueAtTime(f, this.ctx.currentTime);
+        g.gain.setValueAtTime(0.08, this.ctx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + d);
+        o.connect(g); g.connect(this.ctx.destination);
+        o.start(); o.stop(this.ctx.currentTime + d);
+    }
+}
+const uiSound = new UISound();
+
+const catalog = [
+    { id: 'angrybirds_rio', cat: 'POINTER', title: 'Angry Birds Rio', genre: 'פאזל ופיזיקה', lang: 'תמיכה מלאה בפוינטר', controls: 'סמן Magic Remote למתיחה ושחרור', desc: 'גרסת ריו הברזילאית המפורסמת! שחרר את הציפורים האקזוטיות מהכלובים בחופים ובקרנבל.', icon: 'apps/retrohub/games/angrybirds_rio/icon.png', poster: 'apps/retrohub/games/angrybirds_rio/splash.png', url: 'apps/retrohub/games/angrybirds_rio/index.html' },
+    { id: 'cuttherope', cat: 'POINTER', title: 'Cut the Rope', genre: 'פיזיקה ומיומנות', lang: 'תמיכה מלאה בפוינטר', controls: 'סמן Magic Remote לחיתוך חבלים', desc: 'האכל את Om Nom בסוכריות טעימות! חתוך חבלים עם סמן השלט, צבור כוכבים והיזהר ממכשולים.', icon: 'apps/retrohub/games/cuttherope/icon.png', poster: 'apps/retrohub/games/cuttherope/splash.png', url: 'apps/retrohub/games/cuttherope/index.html' },
+    { id: 'duckhunt', cat: 'POINTER', title: 'דאק האנט (Duck Hunt)', genre: 'יריות ארקייד', lang: 'תמיכה מלאה בפוינטר', controls: 'כוון את סמן השלט ולחץ אישור לירי', desc: 'הקלאסיקה האגדית של נינטנדו! שלט ה-Magic Remote הופך לאקדח האור המיתולוגי לצייד ברווזים.', icon: 'apps/retrohub/games/duckhunt/icon.png', poster: 'apps/retrohub/games/duckhunt/splash.png', url: 'apps/retrohub/games/duckhunt/index.html' },
+    { id: 'flappybird', cat: 'POINTER', title: 'פלאפי בירד 4K', genre: 'ארקייד ומיומנות', lang: 'תמיכה מלאה בפוינטר', controls: 'קליק בסמן השלט או כפתור אישור', desc: 'הציפור המשוגעת באיכות 4K! עוף בין הצינורות הירוקים ושבור את שיא הניקוד.', icon: 'apps/retrohub/games/flappybird/icon.png', poster: 'apps/retrohub/games/flappybird/splash.png', url: 'apps/retrohub/games/flappybird/index.html' },
+    { id: 'angrybirds', cat: 'POINTER', title: 'Angry Birds Classic', genre: 'פאזל ופיזיקה', lang: 'תמיכה מלאה בפוינטר', controls: 'סמן Magic Remote', desc: 'המשחק המקורי של הציפורים הכועסות נגד החזירים עם שלט הסמן של LG.', icon: 'apps/retrohub/games/angrybirds/icon.png', poster: 'apps/retrohub/games/angrybirds/splash.png', url: 'apps/retrohub/games/angrybirds/index.html' },
+    { id: 'mario', cat: 'PLATFORM', title: 'סופר מריו קלאסי', genre: 'פלטפורמה מיתולוגית', lang: 'עברית מלאה', controls: 'חיצים לתנועה • אישור לקפיצה', desc: 'סופר מריו המקורי עולם 1-1 ב-60 FPS! רוץ, קפוץ על גומבות, אסוף פטריות ומטבעות.', icon: 'apps/retrohub/games/mario/icon.png', poster: 'apps/retrohub/games/mario/splash.png', url: 'apps/retrohub/games/mario/index.html' },
+    { id: 'sonic', cat: 'PLATFORM', title: 'סוניק הקיפוד בעברית', genre: 'פלטפורמה מהירה', lang: 'עברית מלאה', controls: 'חיצים לריצה • אישור לקפיצה', desc: 'סוניק, טיילס, נאקלס וקרים בריצה במהירות הקול ובאיכות חלקה.', icon: 'apps/retrohub/games/sonic/icon.png', poster: 'apps/retrohub/games/sonic/splash.png', url: 'apps/retrohub/games/sonic/index.html' },
+    { id: 'dave', cat: 'PLATFORM', title: 'דייב המסוכן בעברית', genre: 'פלטפורמת DOS', lang: 'עברית מלאה', controls: 'חיצים לתנועה • אישור לקפיצה וירי', desc: 'משחק ה-DOS האגדי של ג\'ון רומרו! אסוף את הגביע המוזהב, ג\'טפאק ואקדח והיזהר מלבה.', icon: 'apps/retrohub/games/dave/icon.png', poster: 'apps/retrohub/games/dave/splash.png', url: 'apps/retrohub/games/dave/index.html' },
+    { id: 'icytower', cat: 'PLATFORM', title: 'אייסי טאוור מריו HD', genre: 'טיפוס ומיומנות', lang: 'עברית מלאה', controls: 'חיצים לתנופה • אישור לקפיצה', desc: 'מגדל הקרח האהוב בגרפיקת 4K ושמיים דינמיים! קפיצות קיר ענקיות וקומבואים.', icon: 'apps/retrohub/games/icytower/icon.png', poster: 'apps/retrohub/games/icytower/splash.png', url: 'apps/retrohub/games/icytower/index.html' },
+    { id: 'doom', cat: '3D', title: 'דום קלאסי בעברית (DOOM)', genre: 'יריות תלת-מימד', lang: 'עברית מלאה', controls: 'חיצים לתנועה • אישור לירי', desc: 'משחק הפעולה המהפכני מבוסס DOOM1.WAD המקורי! נשקים, מפלצות וסטטוס-בר בעברית.', icon: 'apps/retrohub/games/doom/icon.png', poster: 'apps/retrohub/games/doom/splash.png', url: 'apps/retrohub/games/doom/index.html' },
+    { id: 'wolf3d', cat: '3D', title: 'וולפנשטיין 3D בעברית', genre: 'יריות תלת-מימד', lang: 'עברית מלאה', controls: 'חיצים לתנועה • אישור לירי', desc: 'בריחה מטירת וולפנשטיין בתלת-מימד 60FPS! שומרים, קליעים, אוצרות ודלתות סודיות.', icon: 'apps/retrohub/games/wolf3d/icon.png', poster: 'apps/retrohub/games/wolf3d/splash.png', url: 'apps/retrohub/games/wolf3d/index.html' },
+    { id: 'airxonix', cat: '3D', title: 'אייר-קסוניקס 3D בעברית', genre: 'חיתוך שטחים תלת-מימד', lang: 'עברית מלאה', controls: 'חיצי שלט LG להטיית הרחפן', desc: 'רחפן פרופלור תלת-מימדי שגוזר שטחים מעל זירה מרחפת ובונה בלוקים מוגבהים.', icon: 'apps/retrohub/games/airxonix/icon.png', poster: 'apps/retrohub/games/airxonix/splash.png', url: 'apps/retrohub/games/airxonix/index.html' },
+    { id: 'pacxon', cat: 'PUZZLE', title: 'פאק-סוניקס בעברית', genre: 'ארקייד / קסוניקס', lang: 'עברית מלאה', controls: 'חיצי D-Pad לניווט', desc: 'השילוב המנצח של פאקמן וקסוניקס! כבוש 80% מהלוח, תפוס בננות ושעוני עצר והיזהר מרוחות.', icon: 'apps/retrohub/games/pacxon/icon.png', poster: 'apps/retrohub/games/pacxon/splash.png', url: 'apps/retrohub/games/pacxon/index.html' },
+    { id: 'pacman', cat: 'PUZZLE', title: 'פאק-מן 1980 קלאסי', genre: 'ארקייד מבוך', lang: 'עברית מלאה', controls: 'חיצי D-Pad לניווט במבוך', desc: 'המשחק המקורי של חברת נאמקו! אכול נקודות, רדוף אחרי רוחות מבוהלות וצבור ניקוד שיא.', icon: 'apps/retrohub/games/pacman/icon.png', poster: 'apps/retrohub/games/pacman/splash.png', url: 'apps/retrohub/games/pacman/index.html' },
+    { id: 'spaceinvaders', cat: 'PUZZLE', title: 'פולשים מהחלל (Space Invaders)', genre: 'ארקייד יריות רטרו', lang: 'עברית מלאה', controls: 'חיצים לתנועה • אישור לירי', desc: 'הקלאסיקה משנת 1978! הגן על כדור הארץ מפני חלליות חייזרים מאחורי מחסים ירוקים.', icon: 'apps/retrohub/games/spaceinvaders/icon.png', poster: 'apps/retrohub/games/spaceinvaders/splash.png', url: 'apps/retrohub/games/spaceinvaders/index.html' },
+    { id: 'tetris', cat: 'PUZZLE', title: 'טטריס קלאסי', genre: 'פאזל רטרו', lang: 'עברית מלאה', controls: 'חיצים להזזה • למעלה לסיבוב', desc: 'משחק הטטריס הנצחי! שורות, ניקוד, מהירות עולה ומוזיקת רטרו ממכרת.', icon: 'apps/retrohub/games/tetris/icon.png', poster: 'apps/retrohub/games/tetris/splash.png', url: 'apps/retrohub/games/tetris/index.html' }
+];
+
+let currentFilter = 'ALL';
+let filteredList = catalog;
+let selectedIndex = 0;
+let isInGame = false;
+
+const track = document.getElementById('cards-track');
+
+function buildCards() {
+    track.innerHTML = '';
+    filteredList = currentFilter === 'ALL' ? catalog : catalog.filter(g => g.cat === currentFilter);
+    selectedIndex = 0;
+
+    filteredList.forEach((g, idx) => {
+        const card = document.createElement('div');
+        card.className = `game-card ${idx === 0 ? 'focused' : ''}`;
+        card.innerHTML = `
+            <img class="card-icon" src="${g.icon}" alt="${g.title}">
+            <div class="card-name">${g.title}</div>
+            <div class="card-genre">${g.genre}</div>
+        `;
+        card.addEventListener('click', () => {
+            selectGame(idx);
+            launchGame();
+        });
+        track.appendChild(card);
+    });
+
+    if (filteredList.length > 0) updateHero(filteredList[0]);
+}
+
+function updateHero(g) {
+    document.getElementById('hero-title').innerText = g.title;
+    document.getElementById('hero-desc').innerText = g.desc;
+    document.getElementById('hero-badge-lang').innerText = g.lang;
+    document.getElementById('hero-badge-control').innerText = g.controls;
+    document.getElementById('hero-controls').innerText = `🎮 שליטה: ${g.controls}`;
+    document.getElementById('hero-poster').src = g.poster;
+}
+
+function selectGame(idx) {
+    uiSound.beep(480);
+    selectedIndex = (idx + filteredList.length) % filteredList.length;
+    const cards = document.querySelectorAll('.game-card');
+    cards.forEach((c, i) => {
+        if (i === selectedIndex) {
+            c.classList.add('focused');
+            c.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+        } else {
+            c.classList.remove('focused');
+        }
+    });
+    updateHero(filteredList[selectedIndex]);
+}
+
+function launchGame() {
+    uiSound.beep(720, 0.1);
+    const g = filteredList[selectedIndex];
+    const frame = document.getElementById('game-frame');
+    frame.src = g.url;
+    document.getElementById('player-view').classList.add('active');
+    isInGame = true;
+    frame.focus();
+}
+
+function closeGame() {
+    uiSound.beep(360);
+    const frame = document.getElementById('game-frame');
+    frame.src = 'about:blank';
+    document.getElementById('player-view').classList.remove('active');
+    isInGame = false;
+    window.focus();
+}
+
+document.getElementById('btn-hero-play').addEventListener('click', launchGame);
+document.getElementById('exit-bar').addEventListener('click', closeGame);
+
+// Filter buttons
+document.querySelectorAll('.filter-pill').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.filter-pill').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentFilter = btn.dataset.cat;
+        buildCards();
+    });
+});
+
+// Remote Control Handler
+window.addEventListener('keydown', (e) => {
+    uiSound.init();
+    if (isInGame) {
+        if (e.keyCode === 461 || e.keyCode === 27) {
+            closeGame();
+            e.preventDefault();
+        }
+        return;
+    }
+    switch (e.keyCode) {
+        case 37: selectGame(selectedIndex + 1); break;
+        case 39: selectGame(selectedIndex - 1); break;
+        case 13: launchGame(); break;
+    }
+});
+
+buildCards();
+</script>
+</body>
+</html>

@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1920, height=1080, initial-scale=1.0, user-scalable=no">
+    <title>טטריס קלאסי - Tetris for LG webOS TV</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; font-family: 'Segoe UI', Tahoma, sans-serif; }
+        body, html { width: 1920px; height: 1080px; overflow: hidden; background: #030712; color: #fff; }
+        #container { width: 1920px; height: 1080px; display: flex; justify-content: center; align-items: center; gap: 80px; }
+        #canvas-box { border: 4px solid #3b82f6; border-radius: 16px; box-shadow: 0 0 40px rgba(59, 130, 246, 0.5); overflow: hidden; }
+        canvas { display: block; width: 440px; height: 880px; background: #0b0f19; }
+        .side-panel {
+            background: #111827; border: 3px solid #6366f1; border-radius: 20px;
+            padding: 30px 40px; width: 400px; display: flex; flex-direction: column; gap: 25px;
+            box-shadow: 0 0 30px rgba(99, 102, 241, 0.4);
+        }
+        .stat-label { font-size: 24px; color: #94a3b8; }
+        .stat-val { font-size: 44px; font-weight: bold; color: #facc15; font-family: 'Courier New', monospace; }
+        .hint { font-size: 20px; color: #cbd5e1; line-height: 1.6; }
+    </style>
+</head>
+<body>
+<div id="container">
+    <div class="side-panel">
+        <h1 style="color: #6366f1; font-size: 40px;">טֶטְרִיס</h1>
+        <div><div class="stat-label">נִיקוּד:</div><div id="score" class="stat-val">000000</div></div>
+        <div><div class="stat-label">שׁוּרוֹת שֶׁנִּמְחֲקוּ:</div><div id="lines" class="stat-val">0</div></div>
+        <div><div class="stat-label">שָׁלָב:</div><div id="level" class="stat-val">1</div></div>
+        <div class="hint">
+            🎮 <b>שליטה בשלט LG:</b><br>
+            • חיצי ימינה/שמאלה: הזזה<br>
+            • חץ למעלה / אישור: סיבוב<br>
+            • חץ למטה: נפילה מהירה
+        </div>
+    </div>
+    <div id="canvas-box">
+        <canvas id="tetrisCanvas" width="400" height="800"></canvas>
+    </div>
+</div>
+
+<script>
+class TetrisAudio {
+    constructor() { this.ctx = null; }
+    init() { if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)(); }
+    beep(freq, dur=0.08) {
+        if (!this.ctx) return;
+        const o = this.ctx.createOscillator(); const g = this.ctx.createGain();
+        o.frequency.setValueAtTime(freq, this.ctx.currentTime);
+        g.gain.setValueAtTime(0.15, this.ctx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + dur);
+        o.connect(g); g.connect(this.ctx.destination);
+        o.start(); o.stop(this.ctx.currentTime + dur);
+    }
+}
+const sfx = new TetrisAudio();
+
+const canvas = document.getElementById('tetrisCanvas');
+const ctx = canvas.getContext('2d');
+const COLS = 10; const ROWS = 20; const BLOCK = 40;
+
+const pieces = 'ILJOTSZ';
+const colors = { I: '#06b6d4', L: '#f97316', J: '#3b82f6', O: '#eab308', T: '#a855f7', S: '#22c55e', Z: '#ef4444' };
+const shapes = {
+    I: [[1,1,1,1]],
+    L: [[0,0,1],[1,1,1]],
+    J: [[1,0,0],[1,1,1]],
+    O: [[1,1],[1,1]],
+    T: [[0,1,0],[1,1,1]],
+    S: [[0,1,1],[1,1,0]],
+    Z: [[1,1,0],[0,1,1]]
+};
+
+let grid = Array.from({length: ROWS}, () => new Array(COLS).fill(0));
+let score = 0; let linesCleared = 0; let level = 1;
+
+let piece = null;
+let px = 0, py = 0;
+
+function newPiece() {
+    const type = pieces[Math.floor(Math.random() * pieces.length)];
+    piece = { type, shape: shapes[type], color: colors[type] };
+    px = Math.floor((COLS - piece.shape[0].length) / 2);
+    py = 0;
+    if (collides(px, py, piece.shape)) {
+        // Game Over reset
+        grid = Array.from({length: ROWS}, () => new Array(COLS).fill(0));
+        score = 0; linesCleared = 0;
+    }
+}
+
+function collides(nx, ny, shape) {
+    for (let r = 0; r < shape.length; r++) {
+        for (let c = 0; c < shape[r].length; c++) {
+            if (shape[r][c]) {
+                const gx = nx + c; const gy = ny + r;
+                if (gx < 0 || gx >= COLS || gy >= ROWS || (gy >= 0 && grid[gy][gx])) return true;
+            }
+        }
+    }
+    return false;
+}
+
+function rotate() {
+    const s = piece.shape;
+    const rotated = s[0].map((_, idx) => s.map(row => row[idx]).reverse());
+    if (!collides(px, py, rotated)) {
+        piece.shape = rotated;
+        sfx.beep(520);
+    }
+}
+
+function merge() {
+    sfx.beep(280);
+    piece.shape.forEach((row, r) => {
+        row.forEach((v, c) => {
+            if (v && py + r >= 0) grid[py + r][px + c] = piece.color;
+        });
+    });
+
+    // Clear lines
+    let cleared = 0;
+    for (let r = ROWS - 1; r >= 0; r--) {
+        if (grid[r].every(x => x !== 0)) {
+            grid.splice(r, 1);
+            grid.unshift(new Array(COLS).fill(0));
+            cleared++;
+            r++;
+        }
+    }
+    if (cleared > 0) {
+        sfx.beep(880, 0.2);
+        linesCleared += cleared;
+        score += [0, 100, 300, 500, 800][cleared] * level;
+        document.getElementById('score').innerText = String(score).padStart(6, '0');
+        document.getElementById('lines').innerText = linesCleared;
+    }
+    newPiece();
+}
+
+function drop() {
+    if (!collides(px, py + 1, piece.shape)) {
+        py++;
+    } else {
+        merge();
+    }
+}
+
+let lastDrop = 0;
+function loop(time) {
+    if (time - lastDrop > 600) {
+        drop();
+        lastDrop = time;
+    }
+
+    // Render
+    ctx.clearRect(0, 0, 400, 800);
+    for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+            if (grid[r][c]) {
+                ctx.fillStyle = grid[r][c];
+                ctx.fillRect(c * BLOCK, r * BLOCK, BLOCK, BLOCK);
+                ctx.strokeStyle = '#000'; ctx.strokeRect(c * BLOCK, r * BLOCK, BLOCK, BLOCK);
+            }
+        }
+    }
+    if (piece) {
+        ctx.fillStyle = piece.color;
+        piece.shape.forEach((row, r) => {
+            row.forEach((v, c) => {
+                if (v) {
+                    ctx.fillRect((px + c) * BLOCK, (py + r) * BLOCK, BLOCK, BLOCK);
+                    ctx.strokeStyle = '#fff'; ctx.strokeRect((px + c) * BLOCK, (py + r) * BLOCK, BLOCK, BLOCK);
+                }
+            });
+        });
+    }
+    requestAnimationFrame(loop);
+}
+
+window.addEventListener('keydown', (e) => {
+    sfx.init();
+    if (e.keyCode === 37 && !collides(px - 1, py, piece.shape)) { px--; sfx.beep(350); }
+    if (e.keyCode === 39 && !collides(px + 1, py, piece.shape)) { px++; sfx.beep(350); }
+    if (e.keyCode === 38 || e.keyCode === 13) rotate();
+    if (e.keyCode === 40) drop();
+});
+
+newPiece();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

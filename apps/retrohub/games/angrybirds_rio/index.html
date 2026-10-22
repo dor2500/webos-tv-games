@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1920, height=1080, initial-scale=1.0, user-scalable=no">
+    <title>Angry Birds Rio - LG webOS TV</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; font-family: 'Segoe UI', Tahoma, sans-serif; }
+        body, html { width: 1920px; height: 1080px; overflow: hidden; background: #000; }
+        #game-container { position: relative; width: 1920px; height: 1080px; background: linear-gradient(180deg, #38bdf8 0%, #bae6fd 60%, #15803d 60%, #166534 100%); }
+        canvas { display: block; width: 1920px; height: 1080px; }
+        #hud {
+            position: absolute; top: 20px; left: 40px; right: 40px;
+            display: flex; justify-content: space-between; align-items: center;
+            font-size: 30px; font-weight: 900; color: #fff; text-shadow: 2px 2px 8px #000;
+            pointer-events: none;
+        }
+        .badge { background: rgba(0,0,0,0.6); padding: 8px 24px; border-radius: 14px; border: 2px solid #facc15; }
+    </style>
+</head>
+<body>
+<div id="game-container">
+    <div id="hud">
+        <div class="badge">🦜 ANGRY BIRDS RIO — שחרר את הציפורים הכלואות!</div>
+        <div class="badge">נִיקוּד: <span id="score-val">0</span> | צִפּוֹרִים: <span id="birds-val">3</span></div>
+    </div>
+    <canvas id="gameCanvas" width="1920" height="1080"></canvas>
+</div>
+
+<script>
+// Web Audio Synth for Rio
+class RioAudio {
+    constructor() { this.ctx = null; }
+    init() { if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)(); }
+    chirp() {
+        if (!this.ctx) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.frequency.setValueAtTime(600, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(1200, this.ctx.currentTime + 0.15);
+        gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.15);
+        osc.connect(gain); gain.connect(this.ctx.destination);
+        osc.start(); osc.stop(this.ctx.currentTime + 0.15);
+    }
+    hit() {
+        if (!this.ctx) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(140, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(40, this.ctx.currentTime + 0.2);
+        gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.2);
+        osc.connect(gain); gain.connect(this.ctx.destination);
+        osc.start(); osc.stop(this.ctx.currentTime + 0.2);
+    }
+}
+const sfx = new RioAudio();
+
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+const SLING_X = 350;
+const SLING_Y = 650;
+let score = 0;
+let birdsLeft = 3;
+
+let bird = { x: SLING_X, y: SLING_Y, vx: 0, vy: 0, r: 28, flying: false, color: '#0284c7' }; // Blu (Rio Macaw)
+let isDragging = false;
+let dragX = SLING_X;
+let dragY = SLING_Y;
+
+// Cages & Targets
+let cages = [
+    { x: 1300, y: 580, w: 70, h: 70, health: 1, freed: false },
+    { x: 1400, y: 580, w: 70, h: 70, health: 1, freed: false },
+    { x: 1350, y: 500, w: 70, h: 70, health: 1, freed: false },
+    { x: 1550, y: 580, w: 70, h: 70, health: 1, freed: false },
+    { x: 1550, y: 500, w: 70, h: 70, health: 1, freed: false }
+];
+
+// Blocks
+let blocks = [
+    { x: 1280, y: 650, w: 360, h: 25, color: '#b45309' },
+    { x: 1330, y: 570, w: 110, h: 20, color: '#b45309' },
+    { x: 1530, y: 570, w: 110, h: 20, color: '#b45309' }
+];
+
+function resetBird() {
+    bird.x = SLING_X;
+    bird.y = SLING_Y;
+    bird.vx = 0;
+    bird.vy = 0;
+    bird.flying = false;
+    dragX = SLING_X;
+    dragY = SLING_Y;
+    birdsLeft--;
+    document.getElementById('birds-val').innerText = birdsLeft;
+    if (birdsLeft < 0) {
+        birdsLeft = 3;
+        cages.forEach(c => c.freed = false);
+    }
+}
+
+// Mouse / Magic Remote Pointer Handlers
+canvas.addEventListener('mousedown', (e) => {
+    sfx.init();
+    const rect = canvas.getBoundingClientRect();
+    const mx = (e.clientX - rect.left) * (1920 / rect.width);
+    const my = (e.clientY - rect.top) * (1080 / rect.height);
+
+    if (Math.hypot(mx - bird.x, my - bird.y) < 70 && !bird.flying) {
+        isDragging = true;
+    }
+});
+
+canvas.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    const rect = canvas.getBoundingClientRect();
+    dragX = (e.clientX - rect.left) * (1920 / rect.width);
+    dragY = (e.clientY - rect.top) * (1080 / rect.height);
+
+    // Limit stretch
+    const dist = Math.hypot(dragX - SLING_X, dragY - SLING_Y);
+    if (dist > 180) {
+        const angle = Math.atan2(dragY - SLING_Y, dragX - SLING_X);
+        dragX = SLING_X + Math.cos(angle) * 180;
+        dragY = SLING_Y + Math.sin(angle) * 180;
+    }
+    bird.x = dragX;
+    bird.y = dragY;
+});
+
+canvas.addEventListener('mouseup', () => {
+    if (isDragging) {
+        isDragging = false;
+        bird.flying = true;
+        sfx.chirp();
+        bird.vx = (SLING_X - dragX) * 0.28;
+        bird.vy = (SLING_Y - dragY) * 0.28;
+    }
+});
+
+function update() {
+    if (bird.flying) {
+        bird.x += bird.vx;
+        bird.y += bird.vy;
+        bird.vy += 0.48; // Gravity
+
+        // Check collision with ground
+        if (bird.y > 650) {
+            bird.flying = false;
+            sfx.hit();
+            setTimeout(resetBird, 1200);
+        }
+
+        // Check collision with cages
+        cages.forEach(c => {
+            if (!c.freed && bird.x > c.x && bird.x < c.x + c.w && bird.y > c.y && bird.y < c.y + c.h) {
+                c.freed = true;
+                score += 5000;
+                sfx.hit();
+                document.getElementById('score-val').innerText = score;
+            }
+        });
+    }
+}
+
+function render() {
+    ctx.clearRect(0, 0, 1920, 1080);
+
+    // Sun & Clouds
+    ctx.fillStyle = '#fef08a';
+    ctx.beginPath(); ctx.arc(1600, 200, 80, 0, Math.PI * 2); ctx.fill();
+
+    // Palm tree silhouette
+    ctx.fillStyle = '#065f46';
+    ctx.fillRect(100, 480, 20, 200);
+    ctx.beginPath(); ctx.arc(110, 480, 80, Math.PI, 0); ctx.fill();
+
+    // Ground
+    ctx.fillStyle = '#16a34a';
+    ctx.fillRect(0, 670, 1920, 410);
+    ctx.fillStyle = '#15803d';
+    ctx.fillRect(0, 670, 1920, 25);
+
+    // Slingshot
+    ctx.fillStyle = '#78350f';
+    ctx.fillRect(SLING_X - 10, SLING_Y, 20, 120);
+    ctx.fillRect(SLING_X - 35, SLING_Y - 40, 16, 50);
+    ctx.fillRect(SLING_X + 20, SLING_Y - 40, 16, 50);
+
+    // Rubber Band
+    if (isDragging) {
+        ctx.strokeStyle = '#451a03'; ctx.lineWidth = 8;
+        ctx.beginPath(); ctx.moveTo(SLING_X - 25, SLING_Y - 20); ctx.lineTo(bird.x, bird.y); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(SLING_X + 25, SLING_Y - 20); ctx.lineTo(bird.x, bird.y); ctx.stroke();
+    }
+
+    // Blocks
+    blocks.forEach(b => {
+        ctx.fillStyle = b.color;
+        ctx.fillRect(b.x, b.y, b.w, b.h);
+        ctx.strokeStyle = '#78350f'; ctx.lineWidth = 2;
+        ctx.strokeRect(b.x, b.y, b.w, b.h);
+    });
+
+    // Cages
+    cages.forEach(c => {
+        if (!c.freed) {
+            ctx.fillStyle = 'rgba(203, 213, 225, 0.2)';
+            ctx.fillRect(c.x, c.y, c.w, c.h);
+            ctx.strokeStyle = '#475569'; ctx.lineWidth = 4;
+            ctx.strokeRect(c.x, c.y, c.w, c.h);
+            // Bars
+            ctx.beginPath();
+            ctx.moveTo(c.x + 20, c.y); ctx.lineTo(c.x + 20, c.y + c.h);
+            ctx.moveTo(c.x + 50, c.y); ctx.lineTo(c.x + 50, c.y + c.h);
+            ctx.stroke();
+            // Trapped bird inside
+            ctx.fillStyle = '#38bdf8';
+            ctx.beginPath(); ctx.arc(c.x + 35, c.y + 40, 16, 0, Math.PI * 2); ctx.fill();
+        } else {
+            // Broken cage sparkles
+            ctx.fillStyle = '#facc15';
+            ctx.font = '24px Arial';
+            ctx.fillText('✨ שוחרר!', c.x, c.y);
+        }
+    });
+
+    // Bird (Blu from Rio)
+    ctx.save();
+    ctx.translate(bird.x, bird.y);
+    ctx.fillStyle = bird.color;
+    ctx.beginPath(); ctx.arc(0, 0, bird.r, 0, Math.PI * 2); ctx.fill();
+    // Beak
+    ctx.fillStyle = '#f59e0b';
+    ctx.beginPath(); ctx.moveTo(15, -5); ctx.lineTo(38, 5); ctx.lineTo(15, 12); ctx.fill();
+    // Eye
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(8, -8, 8, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#000';
+    ctx.beginPath(); ctx.arc(10, -8, 4, 0, Math.PI * 2); ctx.fill();
+    // Crest feathers
+    ctx.fillStyle = '#0284c7';
+    ctx.beginPath(); ctx.arc(-15, -25, 10, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+}
+
+function loop() {
+    update();
+    render();
+    requestAnimationFrame(loop);
+}
+loop();
+</script>
+</body>
+</html>

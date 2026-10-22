@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1920, height=1080, initial-scale=1.0, user-scalable=no">
+    <title>דאק האנט - Duck Hunt for LG webOS TV</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; font-family: 'Segoe UI', Tahoma, sans-serif; }
+        body, html { width: 1920px; height: 1080px; overflow: hidden; background: #38bdf8; cursor: crosshair; }
+        #canvas-wrapper { position: relative; width: 1920px; height: 1080px; }
+        canvas { display: block; width: 1920px; height: 1080px; }
+        #hud {
+            position: absolute; bottom: 20px; left: 60px; right: 60px;
+            display: flex; justify-content: space-between; align-items: center;
+            font-size: 32px; font-weight: bold; color: #fff; text-shadow: 2px 2px 6px #000;
+            pointer-events: none;
+        }
+        .badge { background: #000; padding: 12px 30px; border-radius: 12px; border: 3px solid #22c55e; }
+    </style>
+</head>
+<body>
+<div id="canvas-wrapper">
+    <div id="hud">
+        <div class="badge">🦆 DUCK HUNT — כוון עם שלט ה-Magic Remote וירה!</div>
+        <div class="badge">נִיקוּד: <span id="score-val">000000</span> | סִבּוּב: 1</div>
+    </div>
+    <canvas id="huntCanvas" width="1920" height="1080"></canvas>
+</div>
+
+<script>
+class HuntAudio {
+    constructor() { this.ctx = null; }
+    init() { if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)(); }
+    bang() {
+        if (!this.ctx) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(200, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(30, this.ctx.currentTime + 0.15);
+        gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.15);
+        osc.connect(gain); gain.connect(this.ctx.destination);
+        osc.start(); osc.stop(this.ctx.currentTime + 0.15);
+    }
+    quack() {
+        if (!this.ctx) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(350, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(450, this.ctx.currentTime + 0.1);
+        gain.gain.setValueAtTime(0.15, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.1);
+        osc.connect(gain); gain.connect(this.ctx.destination);
+        osc.start(); osc.stop(this.ctx.currentTime + 0.1);
+    }
+}
+const sfx = new HuntAudio();
+
+const canvas = document.getElementById('huntCanvas');
+const ctx = canvas.getContext('2d');
+
+let score = 0;
+let ducks = [];
+
+function spawnDuck() {
+    ducks.push({
+        x: Math.random() * 1200 + 300,
+        y: 800,
+        vx: (Math.random() - 0.5) * 8,
+        vy: - (Math.random() * 5 + 4),
+        r: 35,
+        alive: true,
+        fallSpeed: 0,
+        wingUp: true,
+        color: Math.random() > 0.5 ? '#15803d' : '#854d0e'
+    });
+    sfx.quack();
+}
+
+canvas.addEventListener('click', (e) => {
+    sfx.init();
+    sfx.bang();
+    const r = canvas.getBoundingClientRect();
+    const mx = (e.clientX - r.left) * (1920 / r.width);
+    const my = (e.clientY - r.top) * (1080 / r.height);
+
+    ducks.forEach(d => {
+        if (d.alive && Math.hypot(mx - d.x, my - d.y) < d.r * 1.5) {
+            d.alive = false;
+            d.fallSpeed = 8;
+            score += 1000;
+            document.getElementById('score-val').innerText = String(score).padStart(6, '0');
+        }
+    });
+});
+
+setInterval(() => {
+    if (ducks.filter(d => d.alive).length < 2) spawnDuck();
+}, 2200);
+
+function update() {
+    ducks.forEach(d => {
+        if (d.alive) {
+            d.x += d.vx;
+            d.y += d.vy;
+            if (d.x < 100 || d.x > 1820) d.vx = -d.vx;
+            if (d.y < 100) d.vy = Math.abs(d.vy);
+            if (d.y > 850 && d.vy > 0) d.vy = -d.vy;
+            if (Math.random() < 0.05) d.wingUp = !d.wingUp;
+        } else {
+            d.y += d.fallSpeed;
+        }
+    });
+    ducks = ducks.filter(d => d.y < 1200);
+}
+
+function render() {
+    ctx.clearRect(0, 0, 1920, 1080);
+
+    // Sky
+    ctx.fillStyle = '#60a5fa';
+    ctx.fillRect(0, 0, 1920, 1080);
+
+    // Tree
+    ctx.fillStyle = '#78350f';
+    ctx.fillRect(200, 350, 60, 450);
+    ctx.fillStyle = '#16a34a';
+    ctx.beginPath(); ctx.arc(230, 320, 140, 0, Math.PI * 2); ctx.fill();
+
+    // Grass Foreground
+    ctx.fillStyle = '#22c55e';
+    ctx.fillRect(0, 800, 1920, 280);
+    ctx.fillStyle = '#15803d';
+    ctx.fillRect(0, 800, 1920, 30);
+
+    // Ducks
+    ducks.forEach(d => {
+        ctx.save();
+        ctx.translate(d.x, d.y);
+        if (d.vx < 0) ctx.scale(-1, 1);
+
+        // Body
+        ctx.fillStyle = d.color;
+        ctx.beginPath(); ctx.ellipse(0, 0, 35, 20, 0, 0, Math.PI * 2); ctx.fill();
+        // Head
+        ctx.fillStyle = '#15803d';
+        ctx.beginPath(); ctx.arc(28, -12, 16, 0, Math.PI * 2); ctx.fill();
+        // Beak
+        ctx.fillStyle = '#f59e0b';
+        ctx.beginPath(); ctx.moveTo(40, -14); ctx.lineTo(60, -8); ctx.lineTo(40, -2); ctx.fill();
+        // Wing
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        if (d.wingUp) {
+            ctx.ellipse(-5, -20, 14, 25, 0.3, 0, Math.PI * 2);
+        } else {
+            ctx.ellipse(-5, 10, 14, 20, -0.3, 0, Math.PI * 2);
+        }
+        ctx.fill();
+
+        if (!d.alive) {
+            ctx.fillStyle = '#f43f5e';
+            ctx.font = '24px Arial';
+            ctx.fillText('💥 פגיעה!', -30, -40);
+        }
+        ctx.restore();
+    });
+}
+
+function loop() {
+    update();
+    render();
+    requestAnimationFrame(loop);
+}
+spawnDuck();
+loop();
+</script>
+</body>
+</html>

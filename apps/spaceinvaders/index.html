@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1920, height=1080, initial-scale=1.0, user-scalable=no">
+    <title>פולשים מהחלל - Space Invaders LG webOS TV</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; font-family: 'Segoe UI', Tahoma, sans-serif; }
+        body, html { width: 1920px; height: 1080px; overflow: hidden; background: #000; }
+        #game-container { position: relative; width: 1920px; height: 1080px; display: flex; justify-content: center; align-items: center; background: radial-gradient(circle at center, #0a0f1d 0%, #000000 100%); }
+        canvas { display: block; background: #000; border: 3px solid #22c55e; border-radius: 12px; box-shadow: 0 0 35px rgba(34, 197, 94, 0.4); }
+        #hud {
+            position: absolute; top: 25px; left: 50px; right: 50px;
+            display: flex; justify-content: space-between; align-items: center;
+            font-size: 28px; font-weight: 900; color: #fff;
+            pointer-events: none;
+        }
+        .badge { background: rgba(15, 23, 42, 0.85); padding: 8px 24px; border-radius: 14px; border: 2px solid #22c55e; }
+    </style>
+</head>
+<body>
+<div id="game-container">
+    <div id="hud">
+        <div class="badge">👾 SPACE INVADERS 1978 — חיצים לתנועה • אישור לירי!</div>
+        <div class="badge">נִיקוּד: <span id="score-val">0</span> | חַיִּים: <span id="lives-val">🚀🚀🚀</span></div>
+    </div>
+    <canvas id="invadersCanvas" width="1280" height="960"></canvas>
+</div>
+
+<script>
+class InvadersAudio {
+    constructor() { this.ctx = null; }
+    init() { if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)(); }
+    shoot() {
+        if (!this.ctx) return;
+        const o = this.ctx.createOscillator(); const g = this.ctx.createGain();
+        o.type = 'square';
+        o.frequency.setValueAtTime(880, this.ctx.currentTime);
+        o.frequency.exponentialRampToValueAtTime(220, this.ctx.currentTime + 0.12);
+        g.gain.setValueAtTime(0.15, this.ctx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.12);
+        o.connect(g); g.connect(this.ctx.destination);
+        o.start(); o.stop(this.ctx.currentTime + 0.12);
+    }
+    invaderExplode() {
+        if (!this.ctx) return;
+        const o = this.ctx.createOscillator(); const g = this.ctx.createGain();
+        o.type = 'sawtooth';
+        o.frequency.setValueAtTime(160, this.ctx.currentTime);
+        o.frequency.exponentialRampToValueAtTime(30, this.ctx.currentTime + 0.2);
+        g.gain.setValueAtTime(0.2, this.ctx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.2);
+        o.connect(g); g.connect(this.ctx.destination);
+        o.start(); o.stop(this.ctx.currentTime + 0.2);
+    }
+}
+const sfx = new InvadersAudio();
+
+const canvas = document.getElementById('invadersCanvas');
+const ctx = canvas.getContext('2d');
+
+let player = { x: 640, y: 900, w: 50, h: 25, speed: 7, dir: 0 };
+let bullets = [];
+let alienBullets = [];
+let aliens = [];
+let score = 0;
+let lives = 3;
+let alienDir = 1;
+let alienSpeed = 1.2;
+let alienStepDown = false;
+
+// Create Alien Armada (5 rows of 11)
+function initAliens() {
+    aliens = [];
+    for (let r = 0; r < 5; r++) {
+        for (let c = 0; c < 11; c++) {
+            aliens.push({
+                x: 180 + c * 80,
+                y: 120 + r * 60,
+                w: 44,
+                h: 32,
+                row: r,
+                alive: true,
+                color: r === 0 ? '#ef4444' : r < 3 ? '#38bdf8' : '#4ade80'
+            });
+        }
+    }
+}
+initAliens();
+
+// Shields / Bunkers
+let shields = [];
+for (let b = 0; b < 4; b++) {
+    const bx = 220 + b * 260;
+    shields.push({ x: bx, y: 780, w: 90, h: 60, health: 12 });
+}
+
+function shoot() {
+    sfx.init();
+    if (bullets.length < 2) {
+        bullets.push({ x: player.x + player.w / 2 - 3, y: player.y - 10, w: 6, h: 18, vy: -12 });
+        sfx.shoot();
+    }
+}
+
+function update() {
+    // Player Move
+    player.x += player.dir * player.speed;
+    if (player.x < 20) player.x = 20;
+    if (player.x + player.w > 1260) player.x = 1260 - player.w;
+
+    // Bullets Move
+    for (let i = bullets.length - 1; i >= 0; i--) {
+        const b = bullets[i];
+        b.y += b.vy;
+
+        // Hit Shields
+        shields.forEach(s => {
+            if (s.health > 0 && b.x > s.x && b.x < s.x + s.w && b.y > s.y && b.y < s.y + s.h) {
+                s.health--;
+                bullets.splice(i, 1);
+            }
+        });
+
+        // Hit Aliens
+        aliens.forEach(a => {
+            if (a.alive && b.x > a.x && b.x < a.x + a.w && b.y > a.y && b.y < a.y + a.h) {
+                a.alive = false;
+                bullets.splice(i, 1);
+                score += (5 - a.row) * 10;
+                document.getElementById('score-val').innerText = score;
+                sfx.invaderExplode();
+            }
+        });
+
+        if (b.y < 0) bullets.splice(i, 1);
+    }
+
+    // Alien Armada Movement
+    let hitEdge = false;
+    let anyAlive = false;
+    aliens.forEach(a => {
+        if (a.alive) {
+            anyAlive = true;
+            a.x += alienDir * alienSpeed;
+            if (a.x + a.w > 1240 || a.x < 40) hitEdge = true;
+        }
+    });
+
+    if (hitEdge) {
+        alienDir *= -1;
+        aliens.forEach(a => a.y += 24);
+        alienSpeed = Math.min(6, alienSpeed + 0.15);
+    }
+
+    // Alien Shooting
+    if (Math.random() < 0.035) {
+        const liveAliens = aliens.filter(a => a.alive);
+        if (liveAliens.length > 0) {
+            const shooter = liveAliens[Math.floor(Math.random() * liveAliens.length)];
+            alienBullets.push({ x: shooter.x + shooter.w / 2, y: shooter.y + shooter.h, vy: 5, w: 4, h: 14 });
+        }
+    }
+
+    // Alien Bullets Move
+    for (let i = alienBullets.length - 1; i >= 0; i--) {
+        const ab = alienBullets[i];
+        ab.y += ab.vy;
+
+        // Hit Shield
+        shields.forEach(s => {
+            if (s.health > 0 && ab.x > s.x && ab.x < s.x + s.w && ab.y > s.y && ab.y < s.y + s.h) {
+                s.health--;
+                alienBullets.splice(i, 1);
+            }
+        });
+
+        // Hit Player
+        if (ab.x > player.x && ab.x < player.x + player.w && ab.y > player.y && ab.y < player.y + player.h) {
+            alienBullets.splice(i, 1);
+            lives--;
+            document.getElementById('lives-val').innerText = '🚀'.repeat(lives);
+            if (lives <= 0) {
+                alert('סוף המשחק! לחץ אישור להפעלה מחדש');
+                location.reload();
+            }
+        }
+
+        if (ab.y > 960) alienBullets.splice(i, 1);
+    }
+
+    // Win check
+    if (!anyAlive) {
+        alienSpeed = 1.2;
+        initAliens();
+    }
+}
+
+function draw() {
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, 1280, 960);
+
+    // Player Cannon
+    ctx.fillStyle = '#22c55e';
+    ctx.fillRect(player.x, player.y + 10, player.w, player.h - 10);
+    ctx.fillRect(player.x + player.w / 2 - 6, player.y, 12, 10);
+
+    // Shields
+    shields.forEach(s => {
+        if (s.health > 0) {
+            ctx.fillStyle = `rgba(34, 197, 94, ${s.health / 12})`;
+            ctx.fillRect(s.x, s.y, s.w, s.h);
+        }
+    });
+
+    // Bullets
+    ctx.fillStyle = '#ffffff';
+    bullets.forEach(b => ctx.fillRect(b.x, b.y, b.w, b.h));
+
+    ctx.fillStyle = '#ef4444';
+    alienBullets.forEach(ab => ctx.fillRect(ab.x, ab.y, ab.w, ab.h));
+
+    // Aliens
+    aliens.forEach(a => {
+        if (a.alive) {
+            ctx.fillStyle = a.color;
+            ctx.fillRect(a.x, a.y, a.w, a.h);
+            // Alien eyes
+            ctx.fillStyle = '#000';
+            ctx.fillRect(a.x + 8, a.y + 10, 8, 8);
+            ctx.fillRect(a.x + a.w - 16, a.y + 10, 8, 8);
+        }
+    });
+}
+
+function gameLoop() {
+    update();
+    draw();
+    requestAnimationFrame(gameLoop);
+}
+
+// Controller
+window.addEventListener('keydown', (e) => {
+    sfx.init();
+    if (e.keyCode === 37) player.dir = -1; // Left
+    if (e.keyCode === 39) player.dir = 1;  // Right
+    if (e.keyCode === 13 || e.keyCode === 32 || e.keyCode === 38) shoot(); // OK / Space / Up
+});
+window.addEventListener('keyup', (e) => {
+    if (e.keyCode === 37 && player.dir === -1) player.dir = 0;
+    if (e.keyCode === 39 && player.dir === 1) player.dir = 0;
+});
+
+canvas.addEventListener('click', () => shoot());
+
+gameLoop();
+</script>
+</body>
+</html>
