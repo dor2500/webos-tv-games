@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1920, height=1080, initial-scale=1.0, user-scalable=no">
+    <title>נחיתה על הירח 1979 — Lunar Lander Atari Original</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+        body, html { width: 1920px; height: 1080px; overflow: hidden; background: #000; color: #fff; font-family: 'Courier New', monospace; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .hud { width: 1400px; display: flex; justify-content: space-between; font-size: 26px; font-weight: bold; margin-bottom: 12px; }
+        #canvas-box { border: 4px solid #333; background: #000; box-shadow: 0 0 50px rgba(255,255,255,0.1); }
+        canvas { width: 1400px; height: 800px; }
+        .hint { margin-top: 20px; font-size: 22px; color: #888; font-family: 'Segoe UI', sans-serif; }
+    </style>
+</head>
+<body>
+    <div class="hud">
+        <span>LUNAR LANDER 1979 ATARI</span>
+        <span>דלק: <span id="fuel-val" style="color:#22c55e;">1000</span></span>
+        <span>מהירות אנכית: <span id="speed-y">0.0</span></span>
+        <span>מהירות אופקית: <span id="speed-x">0.0</span></span>
+        <span>גובה: <span id="altitude">800</span></span>
+    </div>
+    <div id="canvas-box">
+        <canvas id="lander" width="1400" height="800"></canvas>
+    </div>
+    <div class="hint">🎮 שלט LG: ימינה/שמאלה להטיה • חץ למעלה / אישור (OK) להפעלת מבער רקטי • חזרה ליציאה</div>
+
+<script>
+const canvas = document.getElementById('lander');
+const ctx = canvas.getContext('2d');
+
+let lander = { x: 700, y: 100, vx: 0.5, vy: 0, angle: 0, thrust: false, fuel: 1000, crashed: false, landed: false };
+const gravity = 0.04;
+
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+function playThrust() {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.value = 80 + Math.random() * 40;
+    gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.08);
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.start(); osc.stop(audioCtx.currentTime + 0.08);
+}
+
+// Generate terrain with flat landing pads
+const terrain = [];
+const padX = 850, padW = 120, padY = 700;
+function initTerrain() {
+    terrain.length = 0;
+    terrain.push({x: 0, y: 650});
+    terrain.push({x: 300, y: 550});
+    terrain.push({x: 600, y: 720});
+    terrain.push({x: padX, y: padY}); // Pad start
+    terrain.push({x: padX + padW, y: padY}); // Pad end
+    terrain.push({x: 1200, y: 620});
+    terrain.push({x: 1400, y: 750});
+}
+initTerrain();
+
+function resetGame() {
+    lander = { x: 300 + Math.random() * 400, y: 80, vx: (Math.random() - 0.5) * 2, vy: 0, angle: 0, thrust: false, fuel: 1000, crashed: false, landed: false };
+}
+
+function update() {
+    if (lander.crashed || lander.landed) return;
+
+    lander.vy += gravity;
+
+    if (lander.thrust && lander.fuel > 0) {
+        const ax = Math.sin(lander.angle) * 0.12;
+        const ay = -Math.cos(lander.angle) * 0.12;
+        lander.vx += ax;
+        lander.vy += ay;
+        lander.fuel = Math.max(0, lander.fuel - 2);
+        playThrust();
+    }
+
+    lander.x += lander.vx;
+    lander.y += lander.vy;
+
+    // HUD Update
+    document.getElementById('fuel-val').innerText = lander.fuel;
+    document.getElementById('speed-y').innerText = Math.abs(lander.vy * 10).toFixed(1);
+    document.getElementById('speed-x').innerText = Math.abs(lander.vx * 10).toFixed(1);
+    document.getElementById('altitude').innerText = Math.max(0, Math.floor(700 - lander.y));
+
+    // Collision check
+    if (lander.y >= padY - 14 && lander.x >= padX && lander.x <= padX + padW) {
+        if (Math.abs(lander.vy) < 1.8 && Math.abs(lander.vx) < 1.0 && Math.abs(lander.angle) < 0.25) {
+            lander.landed = true;
+        } else {
+            lander.crashed = true;
+        }
+    } else if (lander.y >= 750 || lander.x < 0 || lander.x > 1400) {
+        lander.crashed = true;
+    }
+}
+
+function draw() {
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, 1400, 800);
+
+    // Stars
+    ctx.fillStyle = '#fff';
+    for (let i = 0; i < 40; i++) {
+        ctx.fillRect((i * 97) % 1400, (i * 137) % 600, 2, 2);
+    }
+
+    // Terrain
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(terrain[0].x, terrain[0].y);
+    for (let i = 1; i < terrain.length; i++) {
+        ctx.lineTo(terrain[i].x, terrain[i].y);
+    }
+    ctx.stroke();
+
+    // Landing Pad Marker
+    ctx.strokeStyle = '#22c55e';
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(padX, padY);
+    ctx.lineTo(padX + padW, padY);
+    ctx.stroke();
+
+    // Lander
+    ctx.save();
+    ctx.translate(lander.x, lander.y);
+    ctx.rotate(lander.angle);
+
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 2.5;
+
+    // Module body
+    ctx.strokeRect(-12, -14, 24, 18);
+    // Legs
+    ctx.beginPath();
+    ctx.moveTo(-12, 4); ctx.lineTo(-20, 16); ctx.lineTo(-24, 16);
+    ctx.moveTo(12, 4); ctx.lineTo(20, 16); ctx.lineTo(24, 16);
+    ctx.stroke();
+
+    // Thrust flame
+    if (lander.thrust && lander.fuel > 0) {
+        ctx.strokeStyle = '#f97316';
+        ctx.beginPath();
+        ctx.moveTo(-6, 6);
+        ctx.lineTo(0, 18 + Math.random() * 8);
+        ctx.lineTo(6, 6);
+        ctx.stroke();
+    }
+
+    ctx.restore();
+
+    if (lander.landed) {
+        ctx.fillStyle = '#22c55e';
+        ctx.font = 'bold 36px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('נחיתה מושלמת על הירח! 🌕', 700, 350);
+        ctx.font = '24px monospace';
+        ctx.fillText('לחץ אישור (OK) לשיגור נוסף', 700, 400);
+    } else if (lander.crashed) {
+        ctx.fillStyle = '#ef4444';
+        ctx.font = 'bold 36px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('התרסקות! המהירות הייתה גבוהה מדי 💥', 700, 350);
+        ctx.font = '24px monospace';
+        ctx.fillText('לחץ אישור (OK) לנסות שוב', 700, 400);
+    }
+}
+
+function loop() {
+    update();
+    draw();
+    requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+window.addEventListener('keydown', (e) => {
+    switch (e.keyCode) {
+        case 37: lander.angle -= 0.08; break; // Rotate Left
+        case 39: lander.angle += 0.08; break; // Rotate Right
+        case 38: lander.thrust = true; break; // Thrust
+        case 13:
+            if (lander.landed || lander.crashed) resetGame();
+            else lander.thrust = true;
+            break;
+        case 461: case 27:
+            if (window.parent && window.parent.closeGame) window.parent.closeGame();
+            else history.back();
+            break;
+    }
+});
+window.addEventListener('keyup', (e) => {
+    if (e.keyCode === 38 || e.keyCode === 13) lander.thrust = false;
+});
+</script>
+</body>
+</html>

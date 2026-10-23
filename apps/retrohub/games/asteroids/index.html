@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1920, height=1080, initial-scale=1.0, user-scalable=no">
+    <title>אסטרואידים 1979 — Atari Asteroids Vector Arcade</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+        body, html { width: 1920px; height: 1080px; overflow: hidden; background: #050505; color: #fff; font-family: 'Courier New', monospace; }
+        #wrapper { position: relative; width: 1920px; height: 1080px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        canvas { width: 1600px; height: 900px; background: #000; border: 4px solid #333; box-shadow: 0 0 50px rgba(255,255,255,0.1); }
+        .hud { position: absolute; top: 30px; width: 1560px; display: flex; justify-content: space-between; font-size: 32px; font-weight: bold; color: #fff; }
+        .hint { position: absolute; bottom: 25px; font-size: 22px; color: #888; font-family: 'Segoe UI', sans-serif; }
+    </style>
+</head>
+<body>
+<div id="wrapper">
+    <div class="hud">
+        <span>ASTEROIDS 1979 ATARI</span>
+        <span>ניקוד: <span id="score-val">0</span></span>
+        <span>חלליות: <span id="lives-val">3</span></span>
+    </div>
+    <canvas id="asteroids" width="1600" height="900"></canvas>
+    <div class="hint">🎮 שלט LG: ימינה/שמאלה לסיבוב • חץ למעלה למבער מנוע • מקש אישור (OK) לירי לייזר • חזרה ליציאה</div>
+</div>
+
+<script>
+const canvas = document.getElementById('asteroids');
+const ctx = canvas.getContext('2d');
+const scoreEl = document.getElementById('score-val');
+const livesEl = document.getElementById('lives-val');
+
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+function playLaser() {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(110, audioCtx.currentTime + 0.12);
+    gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+    gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.12);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.12);
+}
+function playExplode() {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(30, audioCtx.currentTime + 0.25);
+    gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+    gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.25);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.25);
+}
+
+let ship = { x: 800, y: 450, r: 18, a: -Math.PI / 2, rot: 0, thrusting: false, vel: { x: 0, y: 0 } };
+let lasers = [];
+let asteroids = [];
+let score = 0, lives = 3;
+
+function createAsteroid(x, y, r) {
+    const a = Math.random() * Math.PI * 2;
+    const speed = (Math.random() * 2 + 1) * (r === 60 ? 1 : r === 40 ? 1.5 : 2.2);
+    const vert = Math.floor(Math.random() * 5 + 8);
+    const offs = [];
+    for (let i = 0; i < vert; i++) offs.push(Math.random() * 0.4 + 0.8);
+    return { x, y, r, a, speed, vel: { x: Math.cos(a) * speed, y: Math.sin(a) * speed }, vert, offs };
+}
+
+function spawnWave() {
+    asteroids = [];
+    for (let i = 0; i < 6; i++) {
+        let x, y;
+        do {
+            x = Math.random() * 1600;
+            y = Math.random() * 900;
+        } while (Math.hypot(x - ship.x, y - ship.y) < 250);
+        asteroids.push(createAsteroid(x, y, 60));
+    }
+}
+spawnWave();
+
+function shoot() {
+    lasers.push({
+        x: ship.x + Math.cos(ship.a) * ship.r,
+        y: ship.y + Math.sin(ship.a) * ship.r,
+        vel: { x: Math.cos(ship.a) * 12, y: Math.sin(ship.a) * 12 },
+        life: 50
+    });
+    playLaser();
+}
+
+function update() {
+    ship.a += ship.rot;
+    if (ship.thrusting) {
+        ship.vel.x += Math.cos(ship.a) * 0.25;
+        ship.vel.y += Math.sin(ship.a) * 0.25;
+    } else {
+        ship.vel.x *= 0.985;
+        ship.vel.y *= 0.985;
+    }
+    ship.x = (ship.x + ship.vel.x + 1600) % 1600;
+    ship.y = (ship.y + ship.vel.y + 900) % 900;
+
+    // Lasers
+    for (let i = lasers.length - 1; i >= 0; i--) {
+        const l = lasers[i];
+        l.x = (l.x + l.vel.x + 1600) % 1600;
+        l.y = (l.y + l.vel.y + 900) % 900;
+        l.life--;
+        if (l.life <= 0) { lasers.splice(i, 1); continue; }
+
+        // Laser vs Asteroids
+        for (let j = asteroids.length - 1; j >= 0; j--) {
+            const ro = asteroids[j];
+            if (Math.hypot(l.x - ro.x, l.y - ro.y) < ro.r) {
+                playExplode();
+                lasers.splice(i, 1);
+                score += ro.r === 60 ? 20 : ro.r === 40 ? 50 : 100;
+                scoreEl.innerText = score;
+                if (ro.r > 20) {
+                    asteroids.push(createAsteroid(ro.x, ro.y, ro.r === 60 ? 40 : 20));
+                    asteroids.push(createAsteroid(ro.x, ro.y, ro.r === 60 ? 40 : 20));
+                }
+                asteroids.splice(j, 1);
+                if (asteroids.length === 0) spawnWave();
+                break;
+            }
+        }
+    }
+
+    // Asteroids movement
+    asteroids.forEach(ro => {
+        ro.x = (ro.x + ro.vel.x + 1600) % 1600;
+        ro.y = (ro.y + ro.vel.y + 900) % 900;
+        // Collision with ship
+        if (Math.hypot(ship.x - ro.x, ship.y - ro.y) < ship.r + ro.r) {
+            playExplode();
+            lives--;
+            livesEl.innerText = lives;
+            ship.x = 800; ship.y = 450; ship.vel = {x: 0, y: 0};
+            if (lives <= 0) {
+                lives = 3; score = 0;
+                scoreEl.innerText = score;
+                livesEl.innerText = lives;
+                spawnWave();
+            }
+        }
+    });
+}
+
+function draw() {
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, 1600, 900);
+
+    // Ship
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(ship.x + Math.cos(ship.a) * ship.r, ship.y + Math.sin(ship.a) * ship.r);
+    ctx.lineTo(ship.x + Math.cos(ship.a + 2.5) * ship.r, ship.y + Math.sin(ship.a + 2.5) * ship.r);
+    ctx.lineTo(ship.x - Math.cos(ship.a) * (ship.r * 0.5), ship.y - Math.sin(ship.a) * (ship.r * 0.5));
+    ctx.lineTo(ship.x + Math.cos(ship.a - 2.5) * ship.r, ship.y + Math.sin(ship.a - 2.5) * ship.r);
+    ctx.closePath();
+    ctx.stroke();
+
+    // Thrust flame
+    if (ship.thrusting) {
+        ctx.strokeStyle = '#f97316';
+        ctx.beginPath();
+        ctx.moveTo(ship.x - Math.cos(ship.a) * (ship.r * 0.6), ship.y - Math.sin(ship.a) * (ship.r * 0.6));
+        ctx.lineTo(ship.x - Math.cos(ship.a) * (ship.r * 1.5), ship.y - Math.sin(ship.a) * (ship.r * 1.5));
+        ctx.stroke();
+    }
+
+    // Lasers
+    ctx.fillStyle = '#38bdf8';
+    lasers.forEach(l => {
+        ctx.beginPath();
+        ctx.arc(l.x, l.y, 4, 0, Math.PI * 2);
+        ctx.fill();
+    });
+
+    // Asteroids
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 2.5;
+    asteroids.forEach(ro => {
+        ctx.beginPath();
+        for (let i = 0; i < ro.vert; i++) {
+            const angle = (i / ro.vert) * Math.PI * 2;
+            const dist = ro.r * ro.offs[i];
+            const px = ro.x + Math.cos(angle) * dist;
+            const py = ro.y + Math.sin(angle) * dist;
+            if (i === 0) ctx.moveTo(px, py);
+            else ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+        ctx.stroke();
+    });
+}
+
+function loop() {
+    update();
+    draw();
+    requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+window.addEventListener('keydown', (e) => {
+    switch (e.keyCode) {
+        case 37: ship.rot = -0.08; break; // Left
+        case 39: ship.rot = 0.08; break;  // Right
+        case 38: ship.thrusting = true; break; // Up (Thrust)
+        case 13: case 32: shoot(); break; // OK / Space (Laser)
+        case 461: case 27:
+            if (window.parent && window.parent.closeGame) window.parent.closeGame();
+            else history.back();
+            break;
+    }
+});
+window.addEventListener('keyup', (e) => {
+    if (e.keyCode === 37 || e.keyCode === 39) ship.rot = 0;
+    if (e.keyCode === 38) ship.thrusting = false;
+});
+</script>
+</body>
+</html>

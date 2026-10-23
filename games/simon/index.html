@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1920, height=1080, initial-scale=1.0, user-scalable=no">
+    <title>סיימון 1978 — Simon Electronic Memory Original</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+        body, html { width: 1920px; height: 1080px; overflow: hidden; background: #0b0f19; color: #fff; font-family: 'Segoe UI', Tahoma, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .hud { font-size: 36px; font-weight: 900; margin-bottom: 25px; letter-spacing: 2px; }
+        #simon-device { position: relative; width: 680px; height: 680px; border-radius: 50%; background: #1e293b; border: 16px solid #0f172a; box-shadow: 0 0 80px rgba(0,0,0,0.9); display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 16px; padding: 16px; overflow: hidden; }
+        .pad { border-radius: 10px; cursor: pointer; transition: filter 0.1s ease, opacity 0.1s ease; opacity: 0.6; }
+        .pad.green { background: #22c55e; border-top-right-radius: 300px; }
+        .pad.red { background: #ef4444; border-top-left-radius: 300px; }
+        .pad.yellow { background: #eab308; border-bottom-right-radius: 300px; }
+        .pad.blue { background: #3b82f6; border-bottom-left-radius: 300px; }
+        .pad.lit { opacity: 1; filter: brightness(1.7) drop-shadow(0 0 30px #fff); }
+        .center-hub { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 240px; height: 240px; border-radius: 50%; background: #0f172a; border: 10px solid #334155; display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: 0 0 30px rgba(0,0,0,0.8); }
+        .score-lcd { background: #000; color: #ef4444; font-family: 'Courier New', monospace; font-size: 48px; font-weight: 900; padding: 4px 18px; border-radius: 8px; border: 2px solid #475569; margin-top: 8px; }
+        .hint { margin-top: 30px; font-size: 22px; color: #94a3b8; }
+    </style>
+</head>
+<body>
+    <div class="hud">SIMON 1978 • משחק הזיכרון האלקטרוני</div>
+    <div id="simon-device">
+        <div id="pad-1" class="pad red" onclick="playerPress(1)"></div>
+        <div id="pad-0" class="pad green" onclick="playerPress(0)"></div>
+        <div id="pad-3" class="pad blue" onclick="playerPress(3)"></div>
+        <div id="pad-2" class="pad yellow" onclick="playerPress(2)"></div>
+        <div class="center-hub">
+            <span style="font-size:22px; font-weight:900; color:#cbd5e1;">SIMON</span>
+            <div id="score" class="score-lcd">--</div>
+        </div>
+    </div>
+    <div class="hint">🎮 שלט LG: מקשי הצבעים (ירוק, אדום, צהוב, כחול) או סמן Magic Remote • מקש אישור להתחלה • חזרה ליציאה</div>
+
+<script>
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+const FREQS = [415, 310, 252, 209]; // Official Simon tone frequencies (G#, E#, B, G#)
+
+function playTone(idx, dur = 0.3) {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.value = FREQS[idx];
+    gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.start(); osc.stop(audioCtx.currentTime + dur);
+}
+
+let sequence = [];
+let playerStep = 0;
+let acceptingInput = false;
+
+function flashPad(idx, dur = 350) {
+    const pad = document.getElementById(`pad-${idx}`);
+    pad.classList.add('lit');
+    playTone(idx, dur / 1000);
+    setTimeout(() => pad.classList.remove('lit'), dur);
+}
+
+function startGame() {
+    sequence = [];
+    playerStep = 0;
+    nextRound();
+}
+
+function nextRound() {
+    acceptingInput = false;
+    sequence.push(Math.floor(Math.random() * 4));
+    document.getElementById('score').innerText = String(sequence.length).padStart(2, '0');
+    playerStep = 0;
+
+    let delay = 600;
+    sequence.forEach((val, i) => {
+        setTimeout(() => flashPad(val), delay + i * 500);
+    });
+    setTimeout(() => { acceptingInput = true; }, delay + sequence.length * 500 + 100);
+}
+
+function playerPress(idx) {
+    if (!acceptingInput) return;
+    flashPad(idx, 250);
+
+    if (sequence[playerStep] === idx) {
+        playerStep++;
+        if (playerStep === sequence.length) {
+            acceptingInput = false;
+            setTimeout(nextRound, 800);
+        }
+    } else {
+        // Game Over Buzzer
+        acceptingInput = false;
+        document.getElementById('score').innerText = '!!';
+        playTone(3, 0.8);
+        setTimeout(startGame, 1500);
+    }
+}
+
+window.addEventListener('keydown', (e) => {
+    switch (e.keyCode) {
+        case 404: case 82: playerPress(1); break; // Red
+        case 405: case 71: playerPress(0); break; // Green
+        case 403: case 89: playerPress(2); break; // Yellow
+        case 406: case 66: playerPress(3); break; // Blue
+        case 13: startGame(); break;
+        case 461: case 27:
+            if (window.parent && window.parent.closeGame) window.parent.closeGame();
+            else history.back();
+            break;
+    }
+});
+
+setTimeout(startGame, 500);
+</script>
+</body>
+</html>

@@ -2,15 +2,15 @@
 .SYNOPSIS
     סקריפט אוטומטי להתקנת משחקי webOS TV על גבי טלוויזיית LG דרך הרשת.
 .DESCRIPTION
-    מתקין את שלושת משחקי ה-IPK ישירות על גבי הטלוויזיה בעזרת webOS CLI או SSH/luna-send.
+    מתקין את חבילות ה-IPK ישירות על גבי הטלוויזיה בעזרת ares-cli או webOS Dev Manager.
 .PARAMETER TvIp
-    כתובת ה-IP של הטלוויזיה (ברירת מחדל: 192.168.1.5)
+    כתובת ה-IP של הטלוויזיה (לדוגמה 192.168.1.XX או הגדרת משתנה סביבה TV_IP)
 .PARAMETER Port
     פורט החיבור (9922 למצב מפתח רגיל, 22 לטלוויזיה עם Root)
 #>
 [CmdletBinding()]
 param(
-    [string]$TvIp = "192.168.1.5",
+    [string]$TvIp = $env:TV_IP,
     [int]$Port = 9922
 )
 
@@ -20,6 +20,16 @@ $pkgDir = Join-Path $scriptDir "packages"
 Write-Host "==========================================================" -ForegroundColor Cyan
 Write-Host "  🎮 LG webOS TV - מתקין משחקים אוטומטי" -ForegroundColor Yellow
 Write-Host "==========================================================" -ForegroundColor Cyan
+
+if ([string]::IsNullOrWhiteSpace($TvIp)) {
+    Write-Host "נא להזין את כתובת ה-IP של הטלוויזיה (לדוגמה: 192.168.X.X):" -ForegroundColor Yellow
+    $TvIp = Read-Host "TV IP Address"
+    if ([string]::IsNullOrWhiteSpace($TvIp)) {
+        Write-Error "לא הוזנה כתובת IP עבור הטלוויזיה. הפעולה בוטלה."
+        exit 1
+    }
+}
+
 Write-Host "כתובת הטלוויזיה: $TvIp`:$Port" -ForegroundColor Gray
 
 $ipks = Get-ChildItem -Path $pkgDir -Filter "*.ipk"

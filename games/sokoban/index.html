@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1920, height=1080, initial-scale=1.0, user-scalable=no">
+    <title>סוקובאן 1982 — Sokoban Warehouse Puzzle Original</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+        body, html { width: 1920px; height: 1080px; overflow: hidden; background: #1e293b; color: #fff; font-family: 'Segoe UI', Tahoma, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .hud { width: 900px; display: flex; justify-content: space-between; align-items: center; font-size: 28px; font-weight: bold; margin-bottom: 20px; }
+        #canvas-box { border: 6px solid #475569; border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.8); background: #0f172a; }
+        canvas { width: 900px; height: 750px; image-rendering: pixelated; }
+        .hint { font-size: 22px; color: #94a3b8; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <div class="hud">
+        <span>SOKOBAN • שלב <span id="level-num">1</span></span>
+        <span>צעדים: <span id="moves-val">0</span></span>
+        <span>תיבות ביעד: <span id="placed-val">0/4</span></span>
+    </div>
+    <div id="canvas-box">
+        <canvas id="sokoban" width="600" height="500"></canvas>
+    </div>
+    <div class="hint">🎮 שלט LG: 4 חיצי הכיוון לתנועה ודחיפה • מקש צהוב / אדום לביטול צעד (Undo) • אישור (OK) לאתחול • חזרה ליציאה</div>
+
+<script>
+const canvas = document.getElementById('sokoban');
+const ctx = canvas.getContext('2d');
+const movesEl = document.getElementById('moves-val');
+const placedEl = document.getElementById('placed-val');
+
+const levels = [
+    [
+        "  ##### ",
+        "###   # ",
+        "# $ # ##",
+        "# #  . #",
+        "#    . #",
+        "##$#.###",
+        " #@$ #  ",
+        " #####  "
+    ],
+    [
+        "#####   ",
+        "#   #   ",
+        "#$# #   ",
+        "# $ #   ",
+        "#.# #   ",
+        "#.# #   ",
+        "#@.#####",
+        "# $    #",
+        "#   #  #",
+        "########"
+    ]
+];
+
+let curLevel = 0;
+let map = [];
+let player = {r: 0, c: 0};
+let moves = 0;
+let historyMoves = [];
+
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+function stepSound() {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'triangle'; osc.frequency.value = 240;
+    gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.04);
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.start(); osc.stop(audioCtx.currentTime + 0.04);
+}
+function pushSound() {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'square'; osc.frequency.value = 160;
+    gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.08);
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.start(); osc.stop(audioCtx.currentTime + 0.08);
+}
+
+function loadLevel(lvlIdx) {
+    curLevel = lvlIdx;
+    moves = 0;
+    historyMoves = [];
+    movesEl.innerText = moves;
+    document.getElementById('level-num').innerText = curLevel + 1;
+    const l = levels[lvlIdx];
+    map = [];
+    for (let r = 0; r < l.length; r++) {
+        map[r] = [];
+        for (let c = 0; c < l[r].length; c++) {
+            const ch = l[r][c];
+            if (ch === '@') { player = {r, c}; map[r][c] = ' '; }
+            else if (ch === '+') { player = {r, c}; map[r][c] = '.'; }
+            else map[r][c] = ch;
+        }
+    }
+    draw();
+}
+
+function move(dr, dc) {
+    const nr = player.r + dr, nc = player.c + dc;
+    const target = map[nr][nc];
+
+    if (target === '#') return;
+
+    if (target === '$' || target === '*') {
+        // Box
+        const bnr = nr + dr, bnc = nc + dc;
+        const bTarget = map[bnr][bnc];
+        if (bTarget === ' ' || bTarget === '.') {
+            historyMoves.push(JSON.parse(JSON.stringify({map, player, moves})));
+            map[nr][nc] = (target === '*') ? '.' : ' ';
+            map[bnr][bnc] = (bTarget === '.') ? '*' : '$';
+            player = {r: nr, c: nc};
+            moves++;
+            movesEl.innerText = moves;
+            pushSound();
+            checkWin();
+        }
+    } else if (target === ' ' || target === '.') {
+        historyMoves.push(JSON.parse(JSON.stringify({map, player, moves})));
+        player = {r: nr, c: nc};
+        moves++;
+        movesEl.innerText = moves;
+        stepSound();
+    }
+    draw();
+}
+
+function undo() {
+    if (historyMoves.length > 0) {
+        const last = historyMoves.pop();
+        map = last.map;
+        player = last.player;
+        moves = last.moves;
+        movesEl.innerText = moves;
+        draw();
+    }
+}
+
+function checkWin() {
+    let unplaced = 0, total = 0, placed = 0;
+    for (let r = 0; r < map.length; r++) {
+        for (let c = 0; c < map[r].length; c++) {
+            if (map[r][c] === '$') total++;
+            if (map[r][c] === '*') { total++; placed++; }
+        }
+    }
+    placedEl.innerText = `${placed}/${total}`;
+    if (placed === total && total > 0) {
+        setTimeout(() => {
+            alert('שלב הושלם בהצלחה!');
+            loadLevel((curLevel + 1) % levels.length);
+        }, 300);
+    }
+}
+
+const TILE_SIZE = 50;
+function draw() {
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(0, 0, 600, 500);
+
+    const offX = Math.floor((600 - (map[0] ? map[0].length * TILE_SIZE : 0)) / 2);
+    const offY = Math.floor((500 - map.length * TILE_SIZE) / 2);
+
+    for (let r = 0; r < map.length; r++) {
+        for (let c = 0; c < map[r].length; c++) {
+            const ch = map[r][c];
+            const px = offX + c * TILE_SIZE;
+            const py = offY + r * TILE_SIZE;
+
+            if (ch === '#') {
+                ctx.fillStyle = '#64748b';
+                ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+                ctx.strokeStyle = '#475569';
+                ctx.strokeRect(px, py, TILE_SIZE, TILE_SIZE);
+            } else if (ch === '.') {
+                ctx.fillStyle = '#1e293b';
+                ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+                ctx.fillStyle = '#ef4444';
+                ctx.beginPath();
+                ctx.arc(px + TILE_SIZE / 2, py + TILE_SIZE / 2, 8, 0, Math.PI * 2);
+                ctx.fill();
+            } else if (ch === '$' || ch === '*') {
+                ctx.fillStyle = ch === '*' ? '#22c55e' : '#eab308';
+                ctx.fillRect(px + 4, py + 4, TILE_SIZE - 8, TILE_SIZE - 8);
+                ctx.strokeStyle = '#fff';
+                ctx.strokeRect(px + 4, py + 4, TILE_SIZE - 8, TILE_SIZE - 8);
+            }
+        }
+    }
+
+    // Player
+    const ppx = offX + player.c * TILE_SIZE;
+    const ppy = offY + player.r * TILE_SIZE;
+    ctx.fillStyle = '#38bdf8';
+    ctx.beginPath();
+    ctx.arc(ppx + TILE_SIZE / 2, ppy + TILE_SIZE / 2, TILE_SIZE / 2 - 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(ppx + 18, ppy + 18, 5, 5);
+    ctx.fillRect(ppx + 28, ppy + 18, 5, 5);
+}
+
+window.addEventListener('keydown', (e) => {
+    switch (e.keyCode) {
+        case 37: move(0, -1); break;
+        case 38: move(-1, 0); break;
+        case 39: move(0, 1); break;
+        case 40: move(1, 0); break;
+        case 13: loadLevel(curLevel); break; // OK resets
+        case 403: case 404: undo(); break; // Yellow/Red
+        case 461: case 27:
+            if (window.parent && window.parent.closeGame) window.parent.closeGame();
+            else history.back();
+            break;
+    }
+});
+
+loadLevel(0);
+</script>
+</body>
+</html>
