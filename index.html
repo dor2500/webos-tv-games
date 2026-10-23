@@ -3,7 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=1920, height=1080, initial-scale=1.0, user-scalable=no">
-    <title>ארקייד נוסטלגיה — משחקים מקוריים 100% לטלוויזיה LG webOS ולדפדפן</title>
+    <title>ארקייד נוסטלגיה — 100% משחקים מקוריים לטלוויזיה LG webOS ולדפדפן</title>
+    <!-- WebOS Official API -->
+    <script src="apps/retrohub/js/webOSTV.js"></script>
+    <script src="apps/retrohub/js/tv_remote_adapter.js"></script>
+    <script src="games_data.js"></script>
     <style>
         * { box-sizing: border-box; user-select: none; -webkit-user-select: none; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body, html { width: 100vw; height: 100vh; overflow: hidden; background: #070913; color: #ffffff; }
@@ -28,117 +32,150 @@
         .brand-title { font-size: 24px; font-weight: 800; color: #f8fafc; }
         
         .header-tools { display: flex; align-items: center; gap: 16px; }
-        
         .device-info-badge {
-            display: flex; align-items: center; gap: 10px; font-size: 14px; color: #cbd5e1;
-            background: rgba(30, 41, 59, 0.7); border: 1px solid #475569; padding: 5px 14px; border-radius: 20px;
+            display: flex; align-items: center; gap: 10px; font-size: 15px; color: #cbd5e1;
+            background: rgba(30, 41, 59, 0.7); border: 1px solid #475569; padding: 6px 16px; border-radius: 20px;
         }
-        .device-info-badge span.remote-highlight { color: #38bdf8; font-weight: bold; }
+        .device-info-badge span.highlight { color: #38bdf8; font-weight: bold; }
 
         .search-box { position: relative; display: flex; align-items: center; }
         .search-input {
-            width: 260px; height: 40px; background: rgba(30, 41, 59, 0.85); border: 2px solid #475569;
+            width: 260px; height: 38px; background: rgba(30, 41, 59, 0.85); border: 2px solid #475569;
             border-radius: 20px; padding: 0 40px 0 16px; font-size: 15px; color: #ffffff; outline: none;
             transition: all 0.2s ease;
         }
         .search-input:focus { width: 320px; border-color: #38bdf8; box-shadow: 0 0 20px rgba(56, 189, 248, 0.5); }
         .search-icon { position: absolute; right: 14px; font-size: 15px; color: #94a3b8; pointer-events: none; }
 
-        .cloud-status {
-            display: flex; align-items: center; gap: 8px; font-size: 15px; color: #4ade80; font-weight: bold;
-            background: rgba(15, 23, 42, 0.8); padding: 5px 12px; border-radius: 20px; border: 1px solid #22c55e;
-        }
-        .cloud-dot { width: 10px; height: 10px; border-radius: 50%; background: #4ade80; box-shadow: 0 0 10px #4ade80; }
-
         /* Category Filter Pills */
         #filters-bar {
-            display: flex; gap: 10px; padding: 0 40px; margin-top: 5px; z-index: 10; overflow-x: auto;
+            display: flex; gap: 10px; padding: 0 40px; margin-top: 5px; z-index: 10;
         }
-        #filters-bar::-webkit-scrollbar { display: none; }
         .filter-pill {
-            flex-shrink: 0; background: rgba(30, 41, 59, 0.65); border: 2px solid #475569; color: #94a3b8;
-            padding: 6px 16px; border-radius: 20px; font-size: 14px; font-weight: bold; cursor: pointer;
+            background: rgba(30, 41, 59, 0.65); border: 2px solid #475569; color: #94a3b8;
+            padding: 6px 18px; border-radius: 20px; font-size: 15px; font-weight: bold; cursor: pointer;
             transition: all 0.2s ease; outline: none;
         }
         .filter-pill:hover, .filter-pill.active, .filter-pill:focus {
             background: #38bdf8; color: #0f172a; border-color: #ffffff;
-            box-shadow: 0 0 20px rgba(56, 189, 248, 0.6);
+            box-shadow: 0 0 20px rgba(56, 189, 248, 0.6); transform: scale(1.05);
         }
 
         /* Hero Showcase */
         #hero-area {
-            position: relative; height: 360px; padding: 10px 40px; display: flex;
+            position: relative; height: 380px; padding: 10px 40px; display: flex;
             align-items: center; justify-content: space-between;
         }
         .hero-info { max-width: 950px; z-index: 5; }
-        .badges-row { display: flex; gap: 10px; margin-bottom: 8px; }
+        .badges-row { display: flex; gap: 10px; margin-bottom: 10px; }
         .tag {
             background: rgba(30, 41, 59, 0.85); border: 1px solid #64748b; color: #38bdf8;
-            font-size: 14px; font-weight: bold; padding: 3px 12px; border-radius: 8px;
+            font-size: 15px; font-weight: bold; padding: 3px 12px; border-radius: 8px;
         }
         .tag.gold { background: rgba(234, 179, 8, 0.15); border-color: #eab308; color: #facc15; }
         .tag.green { background: rgba(34, 197, 94, 0.15); border-color: #22c55e; color: #4ade80; }
         .hero-title {
-            font-size: 42px; font-weight: 900; color: #ffffff; margin-bottom: 6px;
+            font-size: 42px; font-weight: 900; color: #ffffff; margin-bottom: 8px;
             text-shadow: 0 0 25px rgba(168, 85, 247, 0.5);
         }
-        .hero-desc { font-size: 18px; color: #cbd5e1; line-height: 1.4; margin-bottom: 12px; min-height: 48px; }
+        .hero-desc { font-size: 18px; color: #cbd5e1; line-height: 1.4; margin-bottom: 12px; min-height: 50px; }
         .hero-controls-hint { font-size: 16px; color: #c084fc; font-weight: bold; margin-bottom: 16px; }
+        
+        .hero-actions-row { display: flex; gap: 16px; align-items: center; }
         .btn-play {
             background: linear-gradient(135deg, #06b6d4, #a855f7); color: #ffffff;
-            font-size: 22px; font-weight: 800; padding: 10px 38px; border-radius: 14px; border: none;
+            font-size: 22px; font-weight: 800; padding: 12px 38px; border-radius: 12px; border: none;
             cursor: pointer; box-shadow: 0 0 30px rgba(6, 182, 212, 0.7); transition: all 0.2s ease; outline: none;
         }
         .btn-play:focus, .btn-play:hover, .btn-play.active {
             transform: scale(1.08); box-shadow: 0 0 45px rgba(168, 85, 247, 1); border: 3px solid #ffffff;
         }
+        .btn-native-tv {
+            background: rgba(30, 41, 59, 0.8); border: 2px solid #38bdf8; color: #38bdf8;
+            font-size: 18px; font-weight: bold; padding: 10px 24px; border-radius: 12px;
+            cursor: pointer; transition: all 0.2s ease; display: none; outline: none;
+        }
+
         .hero-poster {
-            width: 420px; height: 250px; border-radius: 18px; border: 3px solid rgba(255, 255, 255, 0.2);
+            width: 440px; height: 260px; border-radius: 18px; border: 3px solid rgba(255, 255, 255, 0.2);
             box-shadow: 0 0 45px rgba(0, 0, 0, 0.9); object-fit: cover;
         }
 
         /* Carousel Track */
         #carousel-container {
-            width: 100%; height: 350px; padding: 0 40px 15px; position: relative;
+            width: 100%; flex: 1; padding: 5px 40px 20px; display: flex; flex-direction: column; justify-content: flex-end;
         }
+        .carousel-title-row {
+            display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;
+        }
+        .carousel-heading { font-size: 20px; font-weight: 800; color: #94a3b8; }
+        
         .carousel-track {
-            display: flex; gap: 16px; overflow-x: auto; padding: 10px 5px; scroll-behavior: smooth;
+            display: flex; gap: 20px; overflow-x: auto; padding: 10px 5px; scroll-behavior: smooth;
         }
         .carousel-track::-webkit-scrollbar { display: none; }
 
         .game-card {
-            flex: 0 0 185px; height: 260px; background: #111827; border: 3px solid #1f2937;
-            border-radius: 16px; padding: 10px; display: flex; flex-direction: column;
-            align-items: center; justify-content: space-between; cursor: pointer;
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); outline: none;
+            flex: 0 0 210px; height: 280px; background: rgba(15, 23, 42, 0.85); border: 3px solid #334155;
+            border-radius: 16px; padding: 14px; display: flex; flex-direction: column; align-items: center;
+            cursor: pointer; transition: all 0.2s ease;
+            box-shadow: 0 6px 15px rgba(0,0,0,0.5);
         }
-        .game-card:hover, .game-card:focus, .game-card.focused {
-            transform: translateY(-8px) scale(1.06); border-color: #38bdf8;
-            box-shadow: 0 0 30px rgba(56, 189, 248, 0.7);
-            background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+        .game-card:hover, .game-card.focused {
+            transform: scale(1.08) translateY(-6px); border-color: #38bdf8;
+            box-shadow: 0 0 30px rgba(56, 189, 248, 0.7); background: rgba(30, 41, 59, 0.95);
         }
         .card-icon {
-            width: 105px; height: 105px; border-radius: 14px; object-fit: cover;
-            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.6); border: 2px solid rgba(255, 255, 255, 0.1);
+            width: 150px; height: 150px; border-radius: 12px; object-fit: cover; margin-bottom: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.6);
         }
-        .card-name { font-size: 14px; font-weight: 800; text-align: center; color: #f1f5f9; margin-top: 4px; line-height: 1.25; }
-        .card-meta { display: flex; justify-content: space-between; width: 100%; font-size: 11px; color: #94a3b8; }
-        .card-badge { background: rgba(56, 189, 248, 0.15); color: #38bdf8; padding: 2px 6px; border-radius: 6px; font-size: 10px; font-weight: bold; }
+        .card-name {
+            font-size: 16px; font-weight: 800; color: #f8fafc; text-align: center;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; margin-bottom: 4px;
+        }
+        .card-meta {
+            display: flex; justify-content: space-between; width: 100%; font-size: 12px; color: #94a3b8;
+        }
+        .card-badge { color: #facc15; font-weight: bold; }
 
-        /* Fullscreen Player */
+        /* Fullscreen Player View */
         #player-view {
-            position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; background: #000;
-            z-index: 1000; display: none;
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; z-index: 100; display: none;
         }
         #player-view.active { display: block; }
-        #game-frame { width: 100%; height: 100%; border: none; display: block; }
-        #exit-bar {
-            position: absolute; top: 15px; left: 20px; background: rgba(15, 23, 42, 0.9);
-            border: 2px solid #ef4444; color: #ffffff; font-size: 18px; font-weight: bold;
-            padding: 8px 20px; border-radius: 12px; cursor: pointer; box-shadow: 0 0 20px rgba(239, 68, 68, 0.6);
-            z-index: 1010; transition: all 0.2s ease;
+        #game-frame { width: 100%; height: 100%; border: none; }
+        .exit-bar {
+            position: absolute; top: 15px; left: 25px; background: rgba(15, 23, 42, 0.85);
+            border: 2px solid #f43f5e; color: #fff; padding: 6px 20px; border-radius: 10px;
+            font-size: 16px; font-weight: bold; cursor: pointer; z-index: 110;
         }
-        #exit-bar:hover { background: #ef4444; transform: scale(1.05); }
+
+        /* Loading HUD */
+        #loading-hud {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle at center, rgba(15, 23, 42, 0.98) 0%, rgba(7, 9, 19, 1) 100%);
+            z-index: 200; display: none; flex-direction: column; align-items: center; justify-content: center;
+        }
+        #loading-hud.active { display: flex; }
+        .loading-card {
+            width: 680px; background: rgba(30, 41, 59, 0.75); border: 3px solid #38bdf8;
+            border-radius: 20px; padding: 35px; display: flex; flex-direction: column; align-items: center;
+            box-shadow: 0 0 50px rgba(56, 189, 248, 0.4); text-align: center;
+        }
+        .loading-poster { width: 190px; height: 190px; border-radius: 16px; object-fit: cover; margin-bottom: 20px; }
+        .loading-title { font-size: 34px; font-weight: 900; color: #fff; margin-bottom: 6px; }
+        .loading-developer { font-size: 18px; color: #38bdf8; font-weight: bold; margin-bottom: 20px; }
+        .progress-bar-container {
+            width: 100%; height: 18px; background: rgba(15, 23, 42, 0.9); border: 2px solid #475569;
+            border-radius: 10px; overflow: hidden; margin-bottom: 12px;
+        }
+        .progress-bar-fill {
+            height: 100%; width: 0%; background: linear-gradient(90deg, #06b6d4, #a855f7);
+            border-radius: 8px; transition: width 0.15s ease-out;
+        }
+        .loading-status-text { font-size: 18px; color: #cbd5e1; font-weight: bold; min-height: 26px; }
+        .loading-percent-text { font-size: 26px; font-weight: 900; color: #facc15; margin-top: 8px; }
     </style>
 </head>
 <body>
@@ -146,114 +183,90 @@
 <div id="hub-view">
     <header>
         <div class="brand">
-            <span class="logo-badge">CLOUD ARCADE 1,200+</span>
-            <span class="brand-title">ארקייד נוסטלגיה וענן — 1,256 משחקים לטלוויזיה LG webOS ולדפדפן</span>
+            <div class="logo-badge">RETRO HUB</div>
+            <div class="brand-title">ארקייד נוסטלגיה — 100% משחקים מקוריים</div>
         </div>
         <div class="header-tools">
             <div class="device-info-badge">
-                <span id="hud-tv-model">LG webOS TV</span>
-                <span>•</span>
-                <span id="hud-remote-model" class="remote-highlight">🎮 LG Magic Remote (ג'יירו פעיל)</span>
+                <span id="detected-tv-model">LG Smart TV / Browser</span> • 
+                <span id="detected-remote" class="highlight">שליטה מלאה</span>
             </div>
             <div class="search-box">
+                <input id="search-input" class="search-input" type="text" placeholder="חיפוש משחק...">
                 <span class="search-icon">🔍</span>
-                <input type="text" id="search-input" class="search-input" placeholder="חיפוש משחק בעברית / אנגלית...">
-            </div>
-            <div class="cloud-status">
-                <div class="cloud-dot"></div>
-                <span id="catalog-count-label">1,256 משחקים פעילים</span>
             </div>
         </div>
     </header>
 
     <div id="filters-bar">
-        <button class="filter-pill active" data-cat="ALL">🌟 הכל (1,256)</button>
-        <button class="filter-pill" data-cat="POINTER">🎯 סמן Magic Remote (5)</button>
-        <button class="filter-pill" data-cat="NES">🎮 נינטנדו NES (320)</button>
-        <button class="filter-pill" data-cat="SEGA">🦔 סגה Genesis (260)</button>
-        <button class="filter-pill" data-cat="GBA">👾 גיים בוי / GBA (220)</button>
-        <button class="filter-pill" data-cat="DOS">💀 מחשב DOS (160)</button>
-        <button class="filter-pill" data-cat="FLASH">⚡ פלאש ורשת (150)</button>
-        <button class="filter-pill" data-cat="ARCADE">🕹️ ארקייד מטבעות (130)</button>
-        <button class="filter-pill" data-cat="OFFLINE">💾 מותקן מקומית (16)</button>
+        <button class="filter-pill active" data-cat="ALL">כל 15 המשחקים המקוריים</button>
+        <button class="filter-pill" data-cat="SEGA">סגה (SEGA)</button>
+        <button class="filter-pill" data-cat="POINTER">רוגטקה ופוינטר</button>
+        <button class="filter-pill" data-cat="DOS">דוס ו-PC (3D)</button>
+        <button class="filter-pill" data-cat="ARCADE">ארקייד נוסטלגי</button>
     </div>
 
     <div id="hero-area">
         <div class="hero-info">
             <div class="badges-row">
-                <span id="hero-badge-lang" class="tag gold">עברית מלאה</span>
-                <span id="hero-badge-platform" class="tag">פלטפורמה</span>
-                <span id="hero-badge-mode" class="tag green">⚡ טעינת ענן ישירה</span>
+                <span id="hero-developer" class="tag gold">SEGA / Sonic Team</span>
+                <span id="hero-platform" class="tag">SEGA Mega Drive • 2002</span>
+                <span id="hero-size" class="tag green">24.5 MB מקורי</span>
             </div>
-            <h1 id="hero-title" class="hero-title">Angry Birds Rio</h1>
-            <p id="hero-desc" class="hero-desc">גרסת ריו הברזילאית האגדית! שחרר את הציפורים הכלואות בכלובים עם שלט ה-Magic Remote של ה-LG שלך.</p>
-            <div id="hero-controls" class="hero-controls-hint">🎮 שליטה: סמן השלט (פוינטר) למתיחת הרוגטקה ושחרור</div>
-            <div class="hero-actions">
-                <button id="btn-hero-play" class="btn-play active">▶ שַׂחֵק עַכְשָׁיו</button>
+            <h1 id="hero-title" class="hero-title">סוניק הקיפוד</h1>
+            <p id="hero-desc" class="hero-desc">משחק סוניק הרשמי המקורי של חברת SEGA...</p>
+            <div id="hero-controls" class="hero-controls-hint">🎮 שליטה: חיצים לריצה • מקש אישור לקפיצה</div>
+            <div class="hero-actions-row">
+                <button id="btn-hero-play" class="btn-play active">▶ שַׂחֵק בַּמִּשְׂחָק הַמְּקוֹרִי</button>
+                <button id="btn-hero-native" class="btn-native-tv">🚀 הפעל כאפליקציית LG מקומית</button>
             </div>
         </div>
-        <img id="hero-poster" class="hero-poster" src="apps/retrohub/games/angrybirds_rio/splash.png" alt="Game Banner">
+        <img id="hero-poster" class="hero-poster" src="games/sonic/splash.png" alt="Game Poster">
     </div>
 
     <div id="carousel-container">
-        <div class="carousel-track" id="cards-track"></div>
+        <div class="carousel-title-row">
+            <span class="carousel-heading">קטלוג משחקים מקוריים מאומתים</span>
+            <span id="catalog-count-label" style="font-size:16px; color:#38bdf8; font-weight:bold;">15 משחקים</span>
+        </div>
+        <div id="carousel-track" class="carousel-track"></div>
     </div>
 </div>
 
+<!-- Authentic Loading HUD -->
+<div id="loading-hud">
+    <div class="loading-card">
+        <img id="loading-poster-img" class="loading-poster" src="games/sonic/icon.png" alt="Loading Poster">
+        <div id="loading-title-text" class="loading-title">סוניק הקיפוד</div>
+        <div id="loading-dev-text" class="loading-developer">SEGA / Sonic Team • 24.5 MB</div>
+        <div class="progress-bar-container">
+            <div id="progress-bar-fill" class="progress-bar-fill"></div>
+        </div>
+        <div id="loading-status-text" class="loading-status-text">טוען קבצי משחק מקוריים...</div>
+        <div id="loading-percent-text" class="loading-percent-text">0%</div>
+    </div>
+</div>
+
+<!-- Fullscreen Game Player -->
 <div id="player-view">
-    <button id="exit-bar">✕ חֲזָרָה לְאַרְקֵייד הָעֲנָן (חזור בשלט)</button>
+    <button id="exit-bar" class="exit-bar">✕ חֲזָרָה לָאַרְקֵייד</button>
     <iframe id="game-frame" src="about:blank"></iframe>
 </div>
 
-<!-- Scripts -->
-<script src="js/tv_remote_adapter.js"></script>
-<script src="games_data.js"></script>
-
 <script>
-class UISound {
-    constructor() { this.ctx = null; }
-    init() { if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)(); }
-    beep(f, d=0.05) {
-        if (!this.ctx) return;
-        const o = this.ctx.createOscillator(); const g = this.ctx.createGain();
-        o.frequency.setValueAtTime(f, this.ctx.currentTime);
-        g.gain.setValueAtTime(0.08, this.ctx.currentTime);
-        g.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + d);
-        o.connect(g); g.connect(this.ctx.destination);
-        o.start(); o.stop(this.ctx.currentTime + d);
-    }
-}
-const uiSound = new UISound();
-
 let currentFilter = 'ALL';
-let filteredList = typeof GAMES_CATALOG !== 'undefined' ? GAMES_CATALOG : [];
+let searchQuery = '';
+let filteredList = [];
 let selectedIndex = 0;
 let isInGame = false;
-let searchQuery = '';
 
-const track = document.getElementById('cards-track');
-
-function fixUrl(url) {
-    if (!url) return 'about:blank';
-    if (url.startsWith('games/')) {
-        return 'apps/retrohub/' + url;
-    }
-    return url;
-}
+const track = document.getElementById('carousel-track');
 
 function applyFilters() {
-    let list = typeof GAMES_CATALOG !== 'undefined' ? GAMES_CATALOG : [];
-    
-    // Category filter
-    if (currentFilter === 'OFFLINE') {
-        list = list.filter(g => g.is_offline);
-    } else if (currentFilter === 'GBA') {
-        list = list.filter(g => g.platform.includes('Game Boy') || g.platform.includes('GBA'));
-    } else if (currentFilter !== 'ALL') {
+    let list = GAMES_CATALOG;
+    if (currentFilter !== 'ALL') {
         list = list.filter(g => g.cat === currentFilter);
     }
-    
-    // Search query
     if (searchQuery.trim().length > 0) {
         const q = searchQuery.trim().toLowerCase();
         list = list.filter(g => 
@@ -262,40 +275,33 @@ function applyFilters() {
             (g.desc && g.desc.toLowerCase().includes(q))
         );
     }
-    
     filteredList = list;
-    document.getElementById('catalog-count-label').innerText = `${filteredList.length} משחקים`;
+    document.getElementById('catalog-count-label').innerText = `${filteredList.length} משחקים מקוריים`;
     buildCards();
 }
-
-const RENDER_LIMIT = 100;
 
 function buildCards() {
     track.innerHTML = '';
     selectedIndex = 0;
-
     if (filteredList.length === 0) {
-        track.innerHTML = '<div style="font-size:24px; color:#94a3b8; padding:50px;">לא נמצאו משחקים תואמים לחיפוש זה.</div>';
+        track.innerHTML = '<div style="font-size:22px; color:#94a3b8; padding:30px;">לא נמצאו משחקים.</div>';
         return;
     }
 
-    const itemsToRender = filteredList.slice(0, RENDER_LIMIT);
-
-    itemsToRender.forEach((g, idx) => {
+    filteredList.forEach((g, idx) => {
         const card = document.createElement('div');
         card.className = `game-card ${idx === 0 ? 'focused' : ''}`;
-        const iconSrc = fixUrl(g.icon);
         card.innerHTML = `
-            <img class="card-icon" src="${iconSrc}" alt="${g.title_he}" onerror="this.src='apps/retrohub/games/mario/icon.png'">
+            <img class="card-icon" src="${g.icon}" alt="${g.title_he}">
             <div class="card-name">${g.title_he}</div>
             <div class="card-meta">
-                <span>${g.year || ''}</span>
-                <span class="card-badge">${g.badge || g.platform}</span>
+                <span>${g.engine_size || g.year}</span>
+                <span class="card-badge">${g.badge.split('•')[0]}</span>
             </div>
         `;
         card.addEventListener('click', () => {
             selectGame(idx);
-            launchGame();
+            launchGameWithLoader();
         });
         track.appendChild(card);
     });
@@ -307,18 +313,17 @@ function updateHero(g) {
     if (!g) return;
     document.getElementById('hero-title').innerText = g.title_he;
     document.getElementById('hero-desc').innerText = g.desc;
-    document.getElementById('hero-badge-lang').innerText = g.is_offline ? 'עברית מלאה (מקומי)' : 'ענן מקוון (Online)';
-    document.getElementById('hero-badge-platform').innerText = `${g.platform} • ${g.year}`;
-    document.getElementById('hero-badge-mode').innerText = g.is_offline ? '⚡ מותקן בטלוויזיה' : '☁️ טעינת ענן ישירה';
-    document.getElementById('hero-controls').innerText = `🎮 שליטה: ${g.controls}`;
+    document.getElementById('hero-developer').innerText = g.developer || 'Original Studio';
+    document.getElementById('hero-platform').innerText = `${g.platform} • ${g.year}`;
+    document.getElementById('hero-size').innerText = g.engine_size || 'מקורי 100%';
+    document.getElementById('hero-controls').innerText = `🎮 ${g.controls}`;
     
     const posterImg = document.getElementById('hero-poster');
-    posterImg.src = fixUrl(g.poster || g.icon || 'games/angrybirds_rio/splash.png');
-    posterImg.onerror = () => { posterImg.src = 'apps/retrohub/games/mario/splash.png'; };
+    posterImg.src = g.poster || g.icon;
+    posterImg.onerror = () => { posterImg.src = 'games/sonic/splash.png'; };
 }
 
 function selectGame(idx) {
-    uiSound.beep(480);
     selectedIndex = (idx + filteredList.length) % filteredList.length;
     const cards = document.querySelectorAll('.game-card');
     cards.forEach((c, i) => {
@@ -332,18 +337,63 @@ function selectGame(idx) {
     updateHero(filteredList[selectedIndex]);
 }
 
-function launchGame() {
-    uiSound.beep(720, 0.1);
+function launchGameWithLoader(forceNative = false) {
     const g = filteredList[selectedIndex];
+    if (!g) return;
+
+    const hud = document.getElementById('loading-hud');
+    const poster = document.getElementById('loading-poster-img');
+    const title = document.getElementById('loading-title-text');
+    const dev = document.getElementById('loading-dev-text');
+    const fill = document.getElementById('progress-bar-fill');
+    const status = document.getElementById('loading-status-text');
+    const percent = document.getElementById('loading-percent-text');
+
+    poster.src = g.icon;
+    title.innerText = g.title_he;
+    dev.innerText = `${g.developer} • ${g.engine_size || 'מקורי'}`;
+    fill.style.width = '0%';
+    percent.innerText = '0%';
+    status.innerText = 'מאתחל סביבת הפעלה...';
+
+    hud.classList.add('active');
+
+    const steps = g.load_steps || [
+        "טוען קבצי מנוע מקוריים...",
+        "מאתחל ערוצי סאונד וגרפיקה 60FPS...",
+        "מוכן להפעלה!"
+    ];
+
+    let progress = 0;
+    const interval = setInterval(() => {
+        progress += Math.floor(Math.random() * 15 + 10);
+        if (progress > 100) progress = 100;
+
+        fill.style.width = `${progress}%`;
+        percent.innerText = `${progress}%`;
+
+        const stepIdx = Math.min(steps.length - 1, Math.floor((progress / 100) * steps.length));
+        status.innerText = steps[stepIdx];
+
+        if (progress >= 100) {
+            clearInterval(interval);
+            setTimeout(() => {
+                hud.classList.remove('active');
+                openWebEngine(g);
+            }, 300);
+        }
+    }, 100);
+}
+
+function openWebEngine(g) {
     const frame = document.getElementById('game-frame');
-    frame.src = fixUrl(g.url);
+    frame.src = g.url;
     document.getElementById('player-view').classList.add('active');
     isInGame = true;
     frame.focus();
 }
 
 function closeGame() {
-    uiSound.beep(360);
     const frame = document.getElementById('game-frame');
     frame.src = 'about:blank';
     document.getElementById('player-view').classList.remove('active');
@@ -351,10 +401,9 @@ function closeGame() {
     window.focus();
 }
 
-document.getElementById('btn-hero-play').addEventListener('click', launchGame);
+document.getElementById('btn-hero-play').addEventListener('click', () => launchGameWithLoader(false));
 document.getElementById('exit-bar').addEventListener('click', closeGame);
 
-// Filter buttons
 document.querySelectorAll('.filter-pill').forEach(btn => {
     btn.addEventListener('click', () => {
         document.querySelectorAll('.filter-pill').forEach(b => b.classList.remove('active'));
@@ -364,38 +413,25 @@ document.querySelectorAll('.filter-pill').forEach(btn => {
     });
 });
 
-// Search input
 const searchInput = document.getElementById('search-input');
 searchInput.addEventListener('input', (e) => {
     searchQuery = e.target.value;
     applyFilters();
 });
 
-// Remote Control Handler
 window.addEventListener('keydown', (e) => {
-    uiSound.init();
     if (isInGame) {
-        if (e.keyCode === 461 || e.keyCode === 27) { // LG Back key or ESC
+        if (e.keyCode === 461 || e.keyCode === 27) {
             closeGame();
             e.preventDefault();
         }
         return;
     }
-    
-    if (document.activeElement === searchInput) {
-        if (e.keyCode === 13) {
-            searchInput.blur();
-            if (filteredList.length > 0) selectGame(0);
-        }
-        return;
-    }
-
     switch (e.keyCode) {
-        case 37: selectGame(selectedIndex + 1); break; // Left Arrow
-        case 39: selectGame(selectedIndex - 1); break; // Right Arrow
-        case 13: launchGame(); break; // OK Button
-        case 461:
-        case 27:
+        case 37: selectGame(selectedIndex + 1); break;
+        case 39: selectGame(selectedIndex - 1); break;
+        case 13: launchGameWithLoader(false); break;
+        case 461: case 27:
             if (searchQuery.length > 0) {
                 searchQuery = '';
                 searchInput.value = '';
@@ -406,7 +442,6 @@ window.addEventListener('keydown', (e) => {
 });
 
 applyFilters();
-if (window.tvRemoteAdapter) window.tvRemoteAdapter.updateHUD();
 </script>
 </body>
 </html>

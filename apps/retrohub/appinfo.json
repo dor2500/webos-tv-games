@@ -1,10 +1,10 @@
 {
   "id": "com.retrohub.nostalgia",
-  "version": "5.1.0",
+  "version": "6.0.0",
   "vendor": "Retro Hub Arcade",
   "type": "web",
   "main": "index.html",
-  "title": "ארקייד נוסטלגיה — משחקים מקוריים",
+  "title": "ארקייד נוסטלגיה — 100% משחקים מקוריים",
   "icon": "icon.png",
   "largeIcon": "largeIcon.png",
   "bgImage": "splash.png",
@@ -13,7 +13,9 @@
   "bgColor": "#070913",
   "iconColor": "#06B6D4",
   "supportGIP": false,
-  "requiredPermissions": [],
+  "requiredPermissions": [
+    "application.operation"
+  ],
   "handlesRelaunch": true,
   "uiRevision": 2
 }
